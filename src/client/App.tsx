@@ -4,7 +4,6 @@ import TeamSelector from './components/TeamSelector';
 import ProgressChart from './components/ProgressChart';
 import TeamManager from './components/TeamManager';
 import TeamComparison from './components/TeamComparison';
-import { localStorageService } from './services/localStorageService';
 
 function App() {
   const [teams, setTeams] = useState<TeamWithRepos[]>([]);
@@ -12,77 +11,58 @@ function App() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
   const [isManualFetching, setIsManualFetching] = useState(false);
-  const loadTeams = () => {
-    const allTeams = localStorageService.getTeams();
-    const teamsWithRepos = allTeams.map(team => 
-      localStorageService.getTeamWithRepos(team.id)
-    ).filter(Boolean) as TeamWithRepos[];
-    setTeams(teamsWithRepos);
+  const loadTeams = async () => {
+    try {
+      const response = await fetch('/api/teams');
+      if (response.ok) {
+        const teams = await response.json();
+        
+        // Load repositories for each team
+        const teamsWithRepos = await Promise.all(
+          teams.map(async (team: Team) => {
+            const repoResponse = await fetch(`/api/repos?teamId=${team.id}`);
+            const repositories = repoResponse.ok ? await repoResponse.json() : [];
+            return { ...team, repositories };
+          })
+        );
+        
+        setTeams(teamsWithRepos);
+      }
+    } catch (error) {
+      console.error('Error loading teams:', error);
+    }
   };
 
-  const generateChartData = (teamId: number): ChartData | null => {
-    const team = localStorageService.getTeam(teamId);
-    if (!team) return null;
-
-    const metrics = localStorageService.getMetricsByTeam(teamId);
-    
-    // Group metrics by timestamp
-    const timeMap = new Map<string, any>();
-    
-    metrics.forEach(metric => {
-      const timestamp = metric.timestamp;
-      
-      if (!timeMap.has(timestamp)) {
-        timeMap.set(timestamp, {
-          timestamp,
-          languages: {},
-          total: { bytes: 0, lines: 0 }
-        });
+  const generateChartData = async (teamId: number): Promise<ChartData | null> => {
+    try {
+      const response = await fetch(`/api/metrics/chart/${teamId}`);
+      if (response.ok) {
+        return await response.json();
       }
-      
-      const entry = timeMap.get(timestamp);
-      
-      if (!entry.languages[metric.language]) {
-        entry.languages[metric.language] = { bytes: 0, lines: 0 };
-      }
-      
-      entry.languages[metric.language].bytes += metric.bytes;
-      entry.languages[metric.language].lines += metric.lines;
-      entry.total.bytes += metric.bytes;
-      entry.total.lines += metric.lines;
-    });
-    
-    return {
-      teamId: team.id,
-      teamName: team.name,
-      data: Array.from(timeMap.values()).sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      )
-    };
+      return null;
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      return null;
+    }
   };
 
-  const updateChartData = () => {
-    const allChartData = teams.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
+  const updateChartData = async () => {
+    const chartPromises = teams.map(team => generateChartData(team.id));
+    const allChartData = (await Promise.all(chartPromises)).filter(Boolean) as ChartData[];
     setChartData(allChartData);
   };
 
   // Polling function to fetch from GitHub API every 5 minutes
   const pollGitHubData = async () => {
-    const repositories = localStorageService.getRepositories();
-    
-    for (const repo of repositories) {
-      try {
-        const response = await fetch(`/api/github/languages/${repo.owner}/${repo.name}`);
-        if (response.ok) {
-          const languageData = await response.json();
-          localStorageService.addMetrics(repo.id, languageData);
-        }
-      } catch (error) {
-        console.error(`Error fetching data for ${repo.owner}/${repo.name}:`, error);
+    try {
+      const response = await fetch('/api/github/poll', { method: 'POST' });
+      if (response.ok) {
+        await loadTeams();
+        await updateChartData();
       }
+    } catch (error) {
+      console.error('Error polling GitHub data:', error);
     }
-    
-    updateChartData();
   };
 
   // Manual fetch for debugging
@@ -93,41 +73,8 @@ function App() {
     console.log('Manual fetch started...');
     
     try {
-      const repositories = localStorageService.getRepositories();
-      console.log('Repositories to fetch:', repositories.length);
-      
-      for (const repo of repositories) {
-        try {
-          console.log(`Fetching data for ${repo.owner}/${repo.name}...`);
-          const response = await fetch(`/api/github/languages/${repo.owner}/${repo.name}`);
-          if (response.ok) {
-            const languageData = await response.json();
-            console.log(`Data received for ${repo.owner}/${repo.name}:`, languageData);
-            localStorageService.addMetrics(repo.id, languageData);
-          } else {
-            console.error(`Failed to fetch ${repo.owner}/${repo.name}:`, response.status);
-          }
-        } catch (error) {
-          console.error(`Error fetching data for ${repo.owner}/${repo.name}:`, error);
-        }
-      }
-      
-      // Force reload teams and update chart data
-      loadTeams();
-      
-      // Generate fresh chart data
-      const allTeams = localStorageService.getTeams();
-      const teamsWithRepos = allTeams.map(team => 
-        localStorageService.getTeamWithRepos(team.id)
-      ).filter(Boolean) as TeamWithRepos[];
-      
-      const freshChartData = teamsWithRepos.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
-      setChartData(freshChartData);
-      
-      // Notify other components about the update
-      window.dispatchEvent(new CustomEvent('manualFetchCompleted'));
-      
-      console.log('Manual fetch completed, charts updated');
+      await pollGitHubData();
+      console.log('Manual fetch completed');
     } catch (error) {
       console.error('Manual fetch failed:', error);
     } finally {
@@ -136,11 +83,13 @@ function App() {
   };
 
   useEffect(() => {
-    loadTeams();
-    updateChartData();
+    const initializeApp = async () => {
+      await loadTeams();
+      // Initial data fetch
+      await pollGitHubData();
+    };
     
-    // Initial data fetch
-    pollGitHubData();
+    initializeApp();
     
     // Set up 5-minute polling
     const interval = setInterval(pollGitHubData, 5 * 60 * 1000);

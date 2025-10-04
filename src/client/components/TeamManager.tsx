@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { TeamWithRepos } from '@shared/types';
-import { localStorageService } from '../services/localStorageService';
 import { adminService } from '../services/adminService';
 import AdminPasswordModal from './AdminPasswordModal';
 
@@ -34,16 +33,29 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     }
   };
 
-  const createTeam = () => {
+  const createTeam = async () => {
     if (!newTeamName.trim()) return;
 
     try {
-      localStorageService.createTeam(newTeamName);
-      setNewTeamName('');
-      setShowCreateForm(false);
-      onUpdate();
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newTeamName }),
+      });
+      
+      if (response.ok) {
+        setNewTeamName('');
+        setShowCreateForm(false);
+        onUpdate();
+      } else {
+        const error = await response.json();
+        alert(`エラー: ${error.error || 'チームの作成に失敗しました'}`);
+      }
     } catch (error) {
       console.error('Error creating team:', error);
+      alert('チームの作成でエラーが発生しました');
     }
   };
 
@@ -52,14 +64,22 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     setShowCreateForm(false);
   };
 
-  const deleteTeam = (id: number) => {
+  const deleteTeam = async (id: number) => {
     if (!confirm('Are you sure you want to delete this team?')) return;
 
     try {
-      localStorageService.deleteTeam(id);
-      onUpdate();
+      const response = await fetch(`/api/teams?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        onUpdate();
+      } else {
+        alert('チームの削除に失敗しました');
+      }
     } catch (error) {
       console.error('Error deleting team:', error);
+      alert('チームの削除でエラーが発生しました');
     }
   };
 
@@ -98,26 +118,49 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
         return;
       }
 
-      // Create repository in localStorage
-      localStorageService.createRepository(parseInt(selectedTeamId), repoInfo.owner, repoInfo.name, newRepoUrl);
+      // Create repository in database
+      const createResponse = await fetch('/api/repos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamId: parseInt(selectedTeamId),
+          owner: repoInfo.owner,
+          name: repoInfo.name,
+          url: newRepoUrl,
+        }),
+      });
       
-      setNewRepoUrl('');
-      setSelectedTeamId('');
-      onUpdate();
+      if (createResponse.ok) {
+        setNewRepoUrl('');
+        setSelectedTeamId('');
+        onUpdate();
+      } else {
+        alert('リポジトリの追加に失敗しました');
+      }
     } catch (error) {
       console.error('Error adding repository:', error);
       alert('リポジトリの追加でエラーが発生しました。再度お試しください。');
     }
   };
 
-  const deleteRepository = (id: number) => {
+  const deleteRepository = async (id: number) => {
     if (!confirm('Are you sure you want to delete this repository?')) return;
 
     try {
-      localStorageService.deleteRepository(id);
-      onUpdate();
+      const response = await fetch(`/api/repos?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        onUpdate();
+      } else {
+        alert('リポジトリの削除に失敗しました');
+      }
     } catch (error) {
       console.error('Error deleting repository:', error);
+      alert('リポジトリの削除でエラーが発生しました');
     }
   };
 

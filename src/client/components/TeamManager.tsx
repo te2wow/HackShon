@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { TeamWithRepos } from '@shared/types';
 import { localStorageService } from '../services/localStorageService';
+import { adminService } from '../services/adminService';
+import AdminPasswordModal from './AdminPasswordModal';
 
 interface TeamManagerProps {
   teams: TeamWithRepos[];
@@ -11,6 +13,26 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
   const [newTeamName, setNewTeamName] = useState('');
   const [newRepoUrl, setNewRepoUrl] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const handleCreateTeamClick = () => {
+    if (!adminService.isAuthenticated()) {
+      setShowPasswordModal(true);
+    } else {
+      setShowCreateForm(true);
+    }
+  };
+
+  const handlePasswordSubmit = async (password: string) => {
+    const isValid = await adminService.authenticate(password);
+    if (isValid) {
+      setShowPasswordModal(false);
+      setShowCreateForm(true);
+    } else {
+      alert('パスワードが正しくありません');
+    }
+  };
 
   const createTeam = () => {
     if (!newTeamName.trim()) return;
@@ -18,10 +40,16 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     try {
       localStorageService.createTeam(newTeamName);
       setNewTeamName('');
+      setShowCreateForm(false);
       onUpdate();
     } catch (error) {
       console.error('Error creating team:', error);
     }
+  };
+
+  const cancelCreateTeam = () => {
+    setNewTeamName('');
+    setShowCreateForm(false);
   };
 
   const deleteTeam = (id: number) => {
@@ -97,21 +125,49 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     <div className="space-y-8">
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4 text-white">Create New Team</h2>
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={newTeamName}
-            onChange={(e) => setNewTeamName(e.target.value)}
-            placeholder="Team name"
-            className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-          />
+        {!showCreateForm ? (
           <button
-            onClick={createTeam}
+            onClick={handleCreateTeamClick}
             className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 shadow-lg shadow-cyan-500/25"
           >
-            Create Team
+            新しいチームを作成
           </button>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                placeholder="Team name"
+                className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                autoFocus
+              />
+              <button
+                onClick={createTeam}
+                disabled={!newTeamName.trim()}
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg ${
+                  newTeamName.trim()
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 shadow-cyan-500/25'
+                    : 'bg-slate-600/50 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                作成
+              </button>
+              <button
+                onClick={cancelCreateTeam}
+                className="px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors duration-200"
+              >
+                キャンセル
+              </button>
+            </div>
+            {adminService.isAuthenticated() && (
+              <p className="text-sm text-green-400">
+                管理者として認証済み（残り時間: {Math.ceil(adminService.getRemainingTime() / 60000)}分）
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
@@ -195,6 +251,12 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
           ))}
         </div>
       </div>
+      
+      <AdminPasswordModal
+        isOpen={showPasswordModal}
+        onSubmit={handlePasswordSubmit}
+        onCancel={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 }

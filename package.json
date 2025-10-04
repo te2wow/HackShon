@@ -11,7 +11,7 @@
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build",
     "start": "node dist/server/index.js",
-    "vercel-build": "npm run build && cp -r dist/client/* . && mkdir -p api && cp dist/server/index.js api/index.js && cp -r dist/server api/server && echo '{\"dependencies\":{\"@hono/node-server\":\"^1.4.1\",\"hono\":\"^4.0.0\",\"dotenv\":\"^16.3.1\",\"pg\":\"^8.16.3\",\"octokit\":\"^3.1.2\"}}' > api/package.json",
+    "vercel-build": "npm run build && cp -r dist/client/* . && mkdir -p api && node scripts/create-vercel-api.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx"
   },

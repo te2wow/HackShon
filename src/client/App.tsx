@@ -4,6 +4,7 @@ import TeamSelector from './components/TeamSelector';
 import ProgressChart from './components/ProgressChart';
 import TeamManager from './components/TeamManager';
 import TeamComparison from './components/TeamComparison';
+import { adminService } from './services/adminService';
 
 function App() {
   const [teams, setTeams] = useState<TeamWithRepos[]>([]);
@@ -11,6 +12,19 @@ function App() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
   const [isManualFetching, setIsManualFetching] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check admin status periodically
+  useEffect(() => {
+    const checkAdminStatus = () => {
+      setIsAdmin(adminService.isAuthenticated());
+    };
+    
+    checkAdminStatus();
+    const interval = setInterval(checkAdminStatus, 5000); // Check every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
   const loadTeams = async () => {
     try {
       const response = await fetch('/api/teams');
@@ -150,25 +164,27 @@ function App() {
                 </button>
               </div>
               
-              <button
-                onClick={manualFetch}
-                disabled={isManualFetching}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-                  isManualFetching
-                    ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
-                    : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
-                }`}
-                title="デバッグ用：手動でGitHubデータを取得"
-              >
-                {isManualFetching ? (
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                    取得中...
-                  </div>
-                ) : (
-                  '手動取得'
-                )}
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={manualFetch}
+                  disabled={isManualFetching}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                    isManualFetching
+                      ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
+                      : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
+                  }`}
+                  title="デバッグ用：手動でGitHubデータを取得"
+                >
+                  {isManualFetching ? (
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+                      取得中...
+                    </div>
+                  ) : (
+                    '手動取得'
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

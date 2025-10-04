@@ -5,7 +5,8 @@
       "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dist/**"]
+        "includeFiles": ["dist/**"],
+        "maxLambdaSize": "50mb"
       }
     }
   ],
@@ -18,10 +19,5 @@
       "src": "/(.*)",
       "dest": "/dist/client/index.html"
     }
-  ],
-  "functions": {
-    "dist/server/index.js": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }

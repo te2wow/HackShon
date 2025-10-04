@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@hono/node-server": "^1.4.1",
+    "hono": "^4.0.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.16.3",
+    "octokit": "^3.1.2"
+  }
+}

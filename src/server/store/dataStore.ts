@@ -1,4 +1,4 @@
-import { Team, Repository, Metric, TeamWithRepos } from '@shared/types';
+import { Team, Repository, Metric, TeamWithRepos } from '../shared/types.js';
 import { PersistentStore } from './persistentStore.js';
 
 class DataStore extends PersistentStore {

@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { Team, Repository, Metric } from '@shared/types';
+import { Team, Repository, Metric } from '../shared/types.js';
 
 interface StoreData {
   teams: Record<number, Team>;

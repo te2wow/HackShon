@@ -1,5 +1,5 @@
 import { db } from './database.js';
-import { Team, Repository, Metric } from '@shared/types.js';
+import { Team, Repository, Metric } from '../shared/types.js';
 
 export class DatabaseService {
   // Teams
@@ -31,7 +31,7 @@ export class DatabaseService {
 
   async deleteTeam(id: number): Promise<boolean> {
     const result = await db.query('DELETE FROM teams WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Repositories
@@ -63,7 +63,7 @@ export class DatabaseService {
 
   async deleteRepository(id: number): Promise<boolean> {
     const result = await db.query('DELETE FROM repositories WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Metrics

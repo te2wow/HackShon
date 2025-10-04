@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { dbService } from '../db/models.js';
-import { ChartData } from '@shared/types';
+import { ChartData } from '../shared/types.js';
 
 const app = new Hono();
 
@@ -36,7 +36,8 @@ app.get('/chart/:teamId', async (c) => {
   const timeMap = new Map<string, any>();
   
   allMetrics.forEach(metric => {
-    const repo = repos.find(r => r.id === metric.repositoryId || r.id === (metric as any).repository_id);
+    const repoId = metric.repositoryId || (metric as any).repository_id;
+    const repo = repos.find(r => r.id === repoId);
     if (!repo) return;
     
     const timestamp = new Date(metric.timestamp).toISOString();

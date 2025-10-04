@@ -5,6 +5,7 @@ import ProgressChart from './components/ProgressChart';
 import TeamManager from './components/TeamManager';
 import TeamComparison from './components/TeamComparison';
 import { adminService } from './services/adminService';
+import { pollingService } from './services/pollingService';
 
 function App() {
   const [teams, setTeams] = useState<TeamWithRepos[]>([]);
@@ -13,6 +14,8 @@ function App() {
   const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
   const [isManualFetching, setIsManualFetching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pollingIntervalRef, setPollingIntervalRef] = useState<NodeJS.Timeout | null>(null);
+  const [currentPollingInterval, setCurrentPollingInterval] = useState(pollingService.getPollingInterval());
   
   // Check admin status periodically
   useEffect(() => {
@@ -96,6 +99,22 @@ function App() {
     }
   };
 
+  const setupPolling = () => {
+    // Clear existing interval
+    if (pollingIntervalRef) {
+      clearInterval(pollingIntervalRef);
+    }
+    
+    // Set up new polling with current interval
+    const intervalMs = pollingService.getPollingIntervalMs();
+    const newInterval = setInterval(pollGitHubData, intervalMs);
+    setPollingIntervalRef(newInterval);
+    
+    console.log(`Polling set up with ${pollingService.getPollingInterval()} minute interval`);
+    
+    return newInterval;
+  };
+
   useEffect(() => {
     const initializeApp = async () => {
       await loadTeams();
@@ -105,10 +124,21 @@ function App() {
     
     initializeApp();
     
-    // Set up 5-minute polling
-    const interval = setInterval(pollGitHubData, 5 * 60 * 1000);
+    // Set up initial polling
+    const interval = setupPolling();
     
-    return () => clearInterval(interval);
+    // Listen for polling interval changes
+    const handlePollingIntervalChange = (event: any) => {
+      setCurrentPollingInterval(event.detail);
+      setupPolling();
+    };
+    
+    window.addEventListener('pollingIntervalChanged', handlePollingIntervalChange);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('pollingIntervalChanged', handlePollingIntervalChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -164,27 +194,32 @@ function App() {
                 </button>
               </div>
               
-              {isAdmin && (
-                <button
-                  onClick={manualFetch}
-                  disabled={isManualFetching}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-                    isManualFetching
-                      ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
-                      : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
-                  }`}
-                  title="デバッグ用：手動でGitHubデータを取得"
-                >
-                  {isManualFetching ? (
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                      取得中...
-                    </div>
-                  ) : (
-                    '手動取得'
-                  )}
-                </button>
-              )}
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-slate-400">
+                  ポーリング: {currentPollingInterval}分間隔
+                </span>
+                {isAdmin && (
+                  <button
+                    onClick={manualFetch}
+                    disabled={isManualFetching}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                      isManualFetching
+                        ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
+                        : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
+                    }`}
+                    title="デバッグ用：手動でGitHubデータを取得"
+                  >
+                    {isManualFetching ? (
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        取得中...
+                      </div>
+                    ) : (
+                      '手動取得'
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

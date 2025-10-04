@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TeamWithRepos } from '@shared/types';
 import { adminService } from '../services/adminService';
+import { pollingService } from '../services/pollingService';
 import AdminPasswordModal from './AdminPasswordModal';
 
 interface TeamManagerProps {
@@ -15,6 +16,7 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(pollingService.getPollingInterval());
 
   // Check if already authenticated on mount
   useEffect(() => {
@@ -22,6 +24,13 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
       setIsAdminMode(true);
     }
   }, []);
+
+  const handlePollingIntervalChange = (minutes: number) => {
+    setPollingInterval(minutes);
+    pollingService.setPollingInterval(minutes);
+    // Notify parent component about the change
+    window.dispatchEvent(new CustomEvent('pollingIntervalChanged', { detail: minutes }));
+  };
 
   const handleAdminLogin = () => {
     setShowPasswordModal(true);
@@ -251,6 +260,37 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Polling Configuration - Only visible in admin mode */}
+      {isAdminMode && (
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-white">Polling Configuration</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="text-white font-medium">ポーリング間隔:</label>
+              <select
+                value={pollingInterval}
+                onChange={(e) => handlePollingIntervalChange(parseInt(e.target.value))}
+                className="px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              >
+                <option value={1}>1分</option>
+                <option value={2}>2分</option>
+                <option value={3}>3分</option>
+                <option value={5}>5分</option>
+                <option value={10}>10分</option>
+                <option value={15}>15分</option>
+                <option value={30}>30分</option>
+              </select>
+              <span className="text-slate-400 text-sm">
+                現在: {pollingInterval}分間隔でGitHubデータを取得
+              </span>
+            </div>
+            <p className="text-slate-400 text-sm">
+              短い間隔に設定するとGitHub APIの使用量が増加します。適切な間隔を選択してください。
+            </p>
+          </div>
         </div>
       )}
 

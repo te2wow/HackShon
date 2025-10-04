@@ -5,8 +5,15 @@ let db;
 
 function getDatabase() {
   if (!db) {
+    const connectionString = process.env.DATABASE_URL;
+    
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    
+    console.log('Connecting to database...');
     db = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: connectionString,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
   }
@@ -63,6 +70,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Database error:', error);
-    return res.status(500).json({ error: 'Database operation failed' });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      nodeEnv: process.env.NODE_ENV
+    });
+    
+    // More specific error messages
+    if (error.message?.includes('DATABASE_URL')) {
+      return res.status(500).json({ error: 'Database configuration error. Environment variables not set.' });
+    }
+    
+    if (error.code === 'ENOTFOUND') {
+      return res.status(500).json({ error: 'Database host not found. Check connection string.' });
+    }
+    
+    if (error.code === '28P01') {
+      return res.status(500).json({ error: 'Database authentication failed.' });
+    }
+    
+    return res.status(500).json({ error: 'Database operation failed', detail: error.message });
   }
 }

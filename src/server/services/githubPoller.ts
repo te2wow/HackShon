@@ -1,27 +1,20 @@
-import { dataStore } from '../store/dataStore.js';
+import { dbService } from '../db/models.js';
 import { eventEmitter } from './eventEmitter.js';
 import { fetchRepositoryLanguages } from './githubService.js';
 
-const POLLING_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 async function pollRepositories() {
   console.log('Starting repository polling...');
   
-  const repositories = dataStore.getRepositories();
-  console.log('Repositories to poll:', repositories);
+  const repositories = await dbService.getAllRepositories();
+  console.log('Repositories to poll:', repositories.length);
   
   for (const repo of repositories) {
     const languages = await fetchRepositoryLanguages(repo.owner, repo.name);
     
     if (languages) {
-      // Create a single metric entry with all languages combined
-      const timestamp = new Date().toISOString();
-      
-      for (const [language, bytes] of Object.entries(languages)) {
-        const lines = Math.round((bytes as number) / 50);
-        await dataStore.addMetricWithTimestamp(repo.id, language, bytes as number, lines, timestamp);
-      }
-      
+      await dbService.addMetrics(repo.id, languages);
       console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
     }
   }

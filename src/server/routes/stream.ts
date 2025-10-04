@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { dataStore } from '../store/dataStore.js';
+import { dbService } from '../db/models.js';
 import { eventEmitter } from '../services/eventEmitter.js';
 
 const app = new Hono();
@@ -8,7 +8,7 @@ const app = new Hono();
 app.get('/', (c) => {
   return streamSSE(c, async (stream) => {
     const sendUpdate = async () => {
-      const teams = dataStore.getTeams();
+      const teams = await dbService.getAllTeams();
       const updates = await Promise.all(
         teams.map(async (team) => {
           const chartData = await fetch(`http://localhost:${process.env.PORT || 3000}/api/metrics/chart/${team.id}`)

@@ -1,22 +1,25 @@
 import { Hono } from 'hono';
-import { dataStore } from '../store/dataStore.js';
+import { dbService } from '../db/models.js';
 
 const app = new Hono();
 
-app.get('/', (c) => {
-  const teams = dataStore.getTeams();
+app.get('/', async (c) => {
+  const teams = await dbService.getAllTeams();
   return c.json(teams);
 });
 
-app.get('/:id', (c) => {
+app.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const team = dataStore.getTeamWithRepos(id);
+  const team = await dbService.getTeamById(id);
   
   if (!team) {
     return c.json({ error: 'Team not found' }, 404);
   }
   
-  return c.json(team);
+  const repositories = await dbService.getRepositoriesByTeam(id);
+  const teamWithRepos = { ...team, repositories };
+  
+  return c.json(teamWithRepos);
 });
 
 app.post('/', async (c) => {
@@ -26,8 +29,12 @@ app.post('/', async (c) => {
     return c.json({ error: 'Team name is required' }, 400);
   }
   
-  const team = await dataStore.createTeam(name);
-  return c.json(team, 201);
+  try {
+    const team = await dbService.createTeam(name);
+    return c.json(team, 201);
+  } catch (error) {
+    return c.json({ error: 'Team name already exists' }, 400);
+  }
 });
 
 app.put('/:id', async (c) => {
@@ -38,18 +45,22 @@ app.put('/:id', async (c) => {
     return c.json({ error: 'Team name is required' }, 400);
   }
   
-  const team = await dataStore.updateTeam(id, name);
-  
-  if (!team) {
-    return c.json({ error: 'Team not found' }, 404);
+  try {
+    const team = await dbService.updateTeam(id, name);
+    
+    if (!team) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+    
+    return c.json(team);
+  } catch (error) {
+    return c.json({ error: 'Team name already exists' }, 400);
   }
-  
-  return c.json(team);
 });
 
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const success = await dataStore.deleteTeam(id);
+  const success = await dbService.deleteTeam(id);
   
   if (!success) {
     return c.json({ error: 'Team not found' }, 404);

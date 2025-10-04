@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { dataStore } from '../store/dataStore.js';
+import { dbService } from '../db/models.js';
 import { ChartData } from '@shared/types';
 
 const app = new Hono();
 
-app.get('/', (c) => {
+app.get('/', async (c) => {
   const teamId = c.req.query('teamId');
   const repositoryId = c.req.query('repositoryId');
   const limit = c.req.query('limit');
@@ -12,31 +12,31 @@ app.get('/', (c) => {
   let metrics;
   
   if (repositoryId) {
-    metrics = dataStore.getMetricsByRepository(parseInt(repositoryId), limit ? parseInt(limit) : undefined);
+    metrics = await dbService.getMetricsByRepository(parseInt(repositoryId), limit ? parseInt(limit) : undefined);
   } else if (teamId) {
-    metrics = dataStore.getMetricsByTeam(parseInt(teamId), limit ? parseInt(limit) : undefined);
+    metrics = await dbService.getMetricsByTeam(parseInt(teamId), limit ? parseInt(limit) : undefined);
   } else {
-    metrics = dataStore.getAllMetrics(limit ? parseInt(limit) : undefined);
+    return c.json({ error: 'teamId or repositoryId is required' }, 400);
   }
   
   return c.json(metrics);
 });
 
-app.get('/chart/:teamId', (c) => {
+app.get('/chart/:teamId', async (c) => {
   const teamId = parseInt(c.req.param('teamId'));
-  const team = dataStore.getTeam(teamId);
+  const team = await dbService.getTeamById(teamId);
   
   if (!team) {
     return c.json({ error: 'Team not found' }, 404);
   }
   
-  const repos = dataStore.getRepositoriesByTeam(teamId);
-  const allMetrics = dataStore.getMetricsByTeam(teamId);
+  const repos = await dbService.getRepositoriesByTeam(teamId);
+  const allMetrics = await dbService.getMetricsByTeam(teamId);
   
   const timeMap = new Map<string, any>();
   
   allMetrics.forEach(metric => {
-    const repo = repos.find(r => r.id === metric.repositoryId);
+    const repo = repos.find(r => r.id === metric.repositoryId || r.id === (metric as any).repository_id);
     if (!repo) return;
     
     const timestamp = new Date(metric.timestamp).toISOString();

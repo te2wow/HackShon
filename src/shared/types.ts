@@ -1,21 +1,25 @@
 export interface Team {
   id: number;
   name: string;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string; // PostgreSQL snake_case
 }
 
 export interface Repository {
   id: number;
-  teamId: number;
+  teamId?: number;
+  team_id?: number; // PostgreSQL snake_case
   owner: string;
   name: string;
   url: string;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string; // PostgreSQL snake_case
 }
 
 export interface Metric {
   id: number;
-  repositoryId: number;
+  repositoryId?: number;
+  repository_id?: number; // PostgreSQL snake_case
   language: string;
   bytes: number;
   lines: number;

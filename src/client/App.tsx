@@ -12,7 +12,6 @@ function App() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
   const [isManualFetching, setIsManualFetching] = useState(false);
-
   const loadTeams = () => {
     const allTeams = localStorageService.getTeams();
     const teamsWithRepos = allTeams.map(team => 

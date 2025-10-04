@@ -12,6 +12,7 @@ import metricsRoutes from './routes/metrics.js';
 import streamRoutes from './routes/stream.js';
 import githubRoutes from './routes/github.js';
 import { startPolling } from './services/githubPoller.js';
+import { initializeDatabase } from './db/database.js';
 
 const app = new Hono();
 
@@ -33,6 +34,9 @@ app.use('/*', serveStatic({ root: './dist/client' }));
 const port = parseInt(process.env.PORT || '3000');
 
 console.log(`Starting HackShon server on port ${port}...`);
+
+// Initialize database
+await initializeDatabase();
 
 serve({
   fetch: app.fetch,

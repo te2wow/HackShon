@@ -1,25 +1,25 @@
 import { Hono } from 'hono';
-import { dataStore } from '../store/dataStore.js';
+import { dbService } from '../db/models.js';
 import { verifyRepository } from '../services/githubService.js';
 import { triggerImmediatePolling } from '../services/githubPoller.js';
 
 const app = new Hono();
 
-app.get('/', (c) => {
+app.get('/', async (c) => {
   const teamId = c.req.query('teamId');
   
   if (teamId) {
-    const repos = dataStore.getRepositoriesByTeam(parseInt(teamId));
+    const repos = await dbService.getRepositoriesByTeam(parseInt(teamId));
     return c.json(repos);
   }
   
-  const repos = dataStore.getRepositories();
+  const repos = await dbService.getAllRepositories();
   return c.json(repos);
 });
 
-app.get('/:id', (c) => {
+app.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const repo = dataStore.getRepository(id);
+  const repo = await dbService.getRepositoryById(id);
   
   if (!repo) {
     return c.json({ error: 'Repository not found' }, 404);
@@ -36,7 +36,7 @@ app.post('/', async (c) => {
     return c.json({ error: 'teamId, owner, and name are required' }, 400);
   }
   
-  const team = dataStore.getTeam(teamId);
+  const team = await dbService.getTeamById(teamId);
   if (!team) {
     return c.json({ error: 'Team not found' }, 404);
   }
@@ -53,18 +53,22 @@ app.post('/', async (c) => {
     return c.json({ error: 'Failed to verify repository' }, 500);
   }
   
-  const repoUrl = url || `https://github.com/${owner}/${name}`;
-  const repo = await dataStore.createRepository(teamId, owner, name, repoUrl);
-  
-  // Trigger immediate polling for the new repository
-  triggerImmediatePolling();
-  
-  return c.json(repo, 201);
+  try {
+    const repoUrl = url || `https://github.com/${owner}/${name}`;
+    const repo = await dbService.createRepository(teamId, owner, name, repoUrl);
+    
+    // Trigger immediate polling for the new repository
+    triggerImmediatePolling();
+    
+    return c.json(repo, 201);
+  } catch (error) {
+    return c.json({ error: 'Repository already exists' }, 400);
+  }
 });
 
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const success = await dataStore.deleteRepository(id);
+  const success = await dbService.deleteRepository(id);
   
   if (!success) {
     return c.json({ error: 'Repository not found' }, 404);

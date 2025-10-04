@@ -9,7 +9,8 @@ interface TeamManagerProps {
 
 export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
   const [newTeamName, setNewTeamName] = useState('');
-  const [newRepo, setNewRepo] = useState({ teamId: '', owner: '', name: '' });
+  const [newRepoUrl, setNewRepoUrl] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState('');
 
   const createTeam = () => {
     if (!newTeamName.trim()) return;
@@ -34,31 +35,50 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     }
   };
 
+  const parseGitHubUrl = (url: string): { owner: string; name: string } | null => {
+    try {
+      const regex = /^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/;
+      const match = url.match(regex);
+      if (match) {
+        return { owner: match[1], name: match[2] };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const addRepository = async () => {
-    if (!newRepo.teamId || !newRepo.owner || !newRepo.name) {
-      alert('Please fill in all fields');
+    if (!selectedTeamId || !newRepoUrl.trim()) {
+      alert('チームを選択してGitHubリポジトリのURLを入力してください');
       return;
     }
 
-    console.log('Adding repository:', newRepo);
+    const repoInfo = parseGitHubUrl(newRepoUrl.trim());
+    if (!repoInfo) {
+      alert('有効なGitHubリポジトリのURLを入力してください\n例: https://github.com/yamada-tarou2525/BigSky');
+      return;
+    }
+
+    console.log('Adding repository:', repoInfo);
     try {
       // First verify the repository exists on GitHub
-      const response = await fetch(`/api/github/languages/${newRepo.owner}/${newRepo.name}`);
+      const response = await fetch(`/api/github/languages/${repoInfo.owner}/${repoInfo.name}`);
       
       if (!response.ok) {
-        alert('Repository not found or not accessible. Please check the owner and repository name.');
+        alert('リポジトリが見つからないか、アクセスできません。URLを確認してください。');
         return;
       }
 
       // Create repository in localStorage
-      const url = `https://github.com/${newRepo.owner}/${newRepo.name}`;
-      localStorageService.createRepository(parseInt(newRepo.teamId), newRepo.owner, newRepo.name, url);
+      localStorageService.createRepository(parseInt(selectedTeamId), repoInfo.owner, repoInfo.name, newRepoUrl);
       
-      setNewRepo({ teamId: '', owner: '', name: '' });
+      setNewRepoUrl('');
+      setSelectedTeamId('');
       onUpdate();
     } catch (error) {
       console.error('Error adding repository:', error);
-      alert('Error adding repository. Please try again.');
+      alert('リポジトリの追加でエラーが発生しました。再度お試しください。');
     }
   };
 
@@ -96,39 +116,45 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
 
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4 text-white">Add Repository</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <select
-            value={newRepo.teamId}
-            onChange={(e) => setNewRepo({ ...newRepo, teamId: e.target.value })}
-            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-          >
-            <option value="">Select team</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={newRepo.owner}
-            onChange={(e) => setNewRepo({ ...newRepo, owner: e.target.value })}
-            placeholder="Owner"
-            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-          />
-          <input
-            type="text"
-            value={newRepo.name}
-            onChange={(e) => setNewRepo({ ...newRepo, name: e.target.value })}
-            placeholder="Repository name"
-            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-          />
-          <button
-            onClick={addRepository}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg shadow-green-500/25"
-          >
-            Add Repository
-          </button>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <select
+              value={selectedTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="">チームを選択</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={addRepository}
+              disabled={!selectedTeamId || !newRepoUrl.trim()}
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg ${
+                selectedTeamId && newRepoUrl.trim()
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-green-500/25'
+                  : 'bg-slate-600/50 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              リポジトリ追加
+            </button>
+          </div>
+          
+          <div>
+            <input
+              type="url"
+              value={newRepoUrl}
+              onChange={(e) => setNewRepoUrl(e.target.value)}
+              placeholder="https://github.com/yamada-tarou2525/BigSky"
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            />
+            <p className="text-slate-400 text-sm mt-2">
+              GitHubリポジトリのURLを入力してください（例: https://github.com/owner/repository）
+            </p>
+          </div>
         </div>
       </div>
 

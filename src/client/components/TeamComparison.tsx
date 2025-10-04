@@ -12,7 +12,6 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { TeamWithRepos, ChartData } from '@shared/types';
-import { localStorageService } from '../services/localStorageService';
 
 ChartJS.register(
   CategoryScale,
@@ -76,49 +75,22 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
   const [selectedTeams, setSelectedTeams] = useState<number[]>([]);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>('24h');
 
-  const generateChartData = (teamId: number): ChartData | null => {
-    const team = localStorageService.getTeam(teamId);
-    if (!team) return null;
-
-    const metrics = localStorageService.getMetricsByTeam(teamId);
-    
-    // Group metrics by timestamp
-    const timeMap = new Map<string, any>();
-    
-    metrics.forEach(metric => {
-      const timestamp = metric.timestamp;
-      
-      if (!timeMap.has(timestamp)) {
-        timeMap.set(timestamp, {
-          timestamp,
-          languages: {},
-          total: { bytes: 0, lines: 0 }
-        });
+  const generateChartData = async (teamId: number): Promise<ChartData | null> => {
+    try {
+      const response = await fetch(`/api/metrics/chart/${teamId}`);
+      if (response.ok) {
+        return await response.json();
       }
-      
-      const entry = timeMap.get(timestamp);
-      
-      if (!entry.languages[metric.language]) {
-        entry.languages[metric.language] = { bytes: 0, lines: 0 };
-      }
-      
-      entry.languages[metric.language].bytes += metric.bytes;
-      entry.languages[metric.language].lines += metric.lines;
-      entry.total.bytes += metric.bytes;
-      entry.total.lines += metric.lines;
-    });
-    
-    return {
-      teamId: team.id,
-      teamName: team.name,
-      data: Array.from(timeMap.values()).sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      )
-    };
+      return null;
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      return null;
+    }
   };
 
-  const loadChartData = () => {
-    const data = teams.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
+  const loadChartData = async () => {
+    const promises = teams.map(team => generateChartData(team.id));
+    const data = (await Promise.all(promises)).filter(Boolean) as ChartData[];
     setChartDataList(data);
   };
 
@@ -128,24 +100,17 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
 
   // Listen for manual fetch events
   useEffect(() => {
-    const handleStorageChange = () => {
-      loadChartData();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
     // Custom event for manual fetch
     const handleManualFetch = () => {
-      setTimeout(() => loadChartData(), 100); // Small delay to ensure localStorage is updated
+      setTimeout(() => loadChartData(), 100);
     };
     
     window.addEventListener('manualFetchCompleted', handleManualFetch);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('manualFetchCompleted', handleManualFetch);
     };
-  }, []);
+  }, [teams]);
 
   const toggleTeamSelection = (teamId: number) => {
     setSelectedTeams(prev => 

@@ -1,27 +1,19 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "dist/server/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "dist/client/**",
-      "use": "@vercel/static"
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/client",
+  "functions": {
+    "dist/server/index.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "dist/server/index.js"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "dist/client/assets/$1"
+      "dest": "/dist/server/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/client/index.html"
+      "dest": "/index.html"
     }
   ]
 }

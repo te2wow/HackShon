@@ -5,9 +5,11 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   root: 'src/client',
+  base: '/',
   build: {
     outDir: '../../dist/client',
-    emptyOutDir: true
+    emptyOutDir: true,
+    assetsDir: 'assets'
   },
   server: {
     proxy: {

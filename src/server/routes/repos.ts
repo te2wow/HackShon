@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { dataStore } from '../store/dataStore.js';
+import { verifyRepository } from '../services/githubService.js';
+import { triggerImmediatePolling } from '../services/githubPoller.js';
 
 const app = new Hono();
 
@@ -28,6 +30,7 @@ app.get('/:id', (c) => {
 
 app.post('/', async (c) => {
   const { teamId, owner, name, url } = await c.req.json();
+  console.log('Add repository request:', { teamId, owner, name, url });
   
   if (!teamId || !owner || !name) {
     return c.json({ error: 'teamId, owner, and name are required' }, 400);
@@ -38,15 +41,30 @@ app.post('/', async (c) => {
     return c.json({ error: 'Team not found' }, 404);
   }
   
+  // Verify repository exists and is accessible
+  try {
+    const verification = await verifyRepository(owner, name);
+    if (!verification.valid) {
+      console.log('Repository verification failed:', verification.error);
+      return c.json({ error: verification.error || 'Repository verification failed' }, 400);
+    }
+  } catch (error) {
+    console.error('Error during repository verification:', error);
+    return c.json({ error: 'Failed to verify repository' }, 500);
+  }
+  
   const repoUrl = url || `https://github.com/${owner}/${name}`;
-  const repo = dataStore.createRepository(teamId, owner, name, repoUrl);
+  const repo = await dataStore.createRepository(teamId, owner, name, repoUrl);
+  
+  // Trigger immediate polling for the new repository
+  triggerImmediatePolling();
   
   return c.json(repo, 201);
 });
 
-app.delete('/:id', (c) => {
+app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const success = dataStore.deleteRepository(id);
+  const success = await dataStore.deleteRepository(id);
   
   if (!success) {
     return c.json({ error: 'Repository not found' }, 404);

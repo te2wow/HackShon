@@ -1,16 +1,17 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serveStatic } from '@hono/node-server/serve-static';
-import dotenv from 'dotenv';
 import teamsRoutes from './routes/teams.js';
 import reposRoutes from './routes/repos.js';
 import metricsRoutes from './routes/metrics.js';
 import streamRoutes from './routes/stream.js';
+import githubRoutes from './routes/github.js';
 import { startPolling } from './services/githubPoller.js';
-
-dotenv.config();
 
 const app = new Hono();
 
@@ -21,6 +22,7 @@ app.route('/api/teams', teamsRoutes);
 app.route('/api/repos', reposRoutes);
 app.route('/api/metrics', metricsRoutes);
 app.route('/api/stream', streamRoutes);
+app.route('/api/github', githubRoutes);
 
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });

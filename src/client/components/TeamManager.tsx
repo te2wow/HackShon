@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TeamWithRepos } from '@shared/types';
+import { localStorageService } from '../services/localStorageService';
 
 interface TeamManagerProps {
   teams: TeamWithRepos[];
@@ -10,69 +11,63 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
   const [newTeamName, setNewTeamName] = useState('');
   const [newRepo, setNewRepo] = useState({ teamId: '', owner: '', name: '' });
 
-  const createTeam = async () => {
+  const createTeam = () => {
     if (!newTeamName.trim()) return;
 
     try {
-      const response = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName }),
-      });
-
-      if (response.ok) {
-        setNewTeamName('');
-        onUpdate();
-      }
+      localStorageService.createTeam(newTeamName);
+      setNewTeamName('');
+      onUpdate();
     } catch (error) {
       console.error('Error creating team:', error);
     }
   };
 
-  const deleteTeam = async (id: number) => {
+  const deleteTeam = (id: number) => {
     if (!confirm('Are you sure you want to delete this team?')) return;
 
     try {
-      const response = await fetch(`/api/teams/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        onUpdate();
-      }
+      localStorageService.deleteTeam(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting team:', error);
     }
   };
 
   const addRepository = async () => {
-    if (!newRepo.teamId || !newRepo.owner || !newRepo.name) return;
+    if (!newRepo.teamId || !newRepo.owner || !newRepo.name) {
+      alert('Please fill in all fields');
+      return;
+    }
 
+    console.log('Adding repository:', newRepo);
     try {
-      const response = await fetch('/api/repos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: parseInt(newRepo.teamId),
-          owner: newRepo.owner,
-          name: newRepo.name,
-        }),
-      });
-
-      if (response.ok) {
-        setNewRepo({ teamId: '', owner: '', name: '' });
-        onUpdate();
+      // First verify the repository exists on GitHub
+      const response = await fetch(`/api/github/languages/${newRepo.owner}/${newRepo.name}`);
+      
+      if (!response.ok) {
+        alert('Repository not found or not accessible. Please check the owner and repository name.');
+        return;
       }
+
+      // Create repository in localStorage
+      const url = `https://github.com/${newRepo.owner}/${newRepo.name}`;
+      localStorageService.createRepository(parseInt(newRepo.teamId), newRepo.owner, newRepo.name, url);
+      
+      setNewRepo({ teamId: '', owner: '', name: '' });
+      onUpdate();
     } catch (error) {
       console.error('Error adding repository:', error);
+      alert('Error adding repository. Please try again.');
     }
   };
 
-  const deleteRepository = async (id: number) => {
+  const deleteRepository = (id: number) => {
     if (!confirm('Are you sure you want to delete this repository?')) return;
 
     try {
-      const response = await fetch(`/api/repos/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        onUpdate();
-      }
+      localStorageService.deleteRepository(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting repository:', error);
     }
@@ -80,32 +75,32 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Create New Team</h2>
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4 text-white">Create New Team</h2>
         <div className="flex gap-4">
           <input
             type="text"
             value={newTeamName}
             onChange={(e) => setNewTeamName(e.target.value)}
             placeholder="Team name"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+            className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
           <button
             onClick={createTeam}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 shadow-lg shadow-cyan-500/25"
           >
             Create Team
           </button>
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Add Repository</h2>
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4 text-white">Add Repository</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select
             value={newRepo.teamId}
             onChange={(e) => setNewRepo({ ...newRepo, teamId: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           >
             <option value="">Select team</option>
             {teams.map((team) => (
@@ -119,34 +114,34 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
             value={newRepo.owner}
             onChange={(e) => setNewRepo({ ...newRepo, owner: e.target.value })}
             placeholder="Owner"
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
           <input
             type="text"
             value={newRepo.name}
             onChange={(e) => setNewRepo({ ...newRepo, name: e.target.value })}
             placeholder="Repository name"
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
           <button
             onClick={addRepository}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg shadow-green-500/25"
           >
             Add Repository
           </button>
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Teams & Repositories</h2>
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4 text-white">Teams & Repositories</h2>
         <div className="space-y-4">
           {teams.map((team) => (
-            <div key={team.id} className="border border-gray-200 rounded-lg p-4">
+            <div key={team.id} className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-medium text-lg">{team.name}</h3>
+                <h3 className="font-medium text-lg text-white">{team.name}</h3>
                 <button
                   onClick={() => deleteTeam(team.id)}
-                  className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                  className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm transition-colors duration-200"
                 >
                   Delete Team
                 </button>
@@ -155,12 +150,12 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
                 <ul className="space-y-1">
                   {team.repositories.map((repo) => (
                     <li key={repo.id} className="flex justify-between items-center pl-4">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-slate-300">
                         {repo.owner}/{repo.name}
                       </span>
                       <button
                         onClick={() => deleteRepository(repo.id)}
-                        className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
+                        className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors duration-200"
                       >
                         Remove
                       </button>
@@ -168,7 +163,7 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500 pl-4">No repositories yet</p>
+                <p className="text-sm text-slate-400 pl-4">No repositories yet</p>
               )}
             </div>
           ))}

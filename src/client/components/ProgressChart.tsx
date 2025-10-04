@@ -62,35 +62,107 @@ export default function ProgressChart({ data }: ProgressChartProps) {
 
   const options: ChartOptions<'line'> = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          color: '#e2e8f0',
+          font: {
+            size: 12,
+            weight: 500,
+          },
+          padding: 20,
+          usePointStyle: true,
+          pointStyle: 'circle',
+        },
       },
-      title: {
-        display: true,
-        text: `${data.teamName} - Code Progress`,
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#e2e8f0',
+        bodyColor: '#cbd5e1',
+        borderColor: '#334155',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
+        mode: 'index',
+        intersect: false,
       },
     },
     scales: {
       y: {
         beginAtZero: true,
+        grid: {
+          color: 'rgba(71, 85, 105, 0.3)',
+          drawBorder: false,
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: {
+            size: 11,
+          },
+          callback: function(value) {
+            return (Number(value) / 1000).toFixed(0) + 'K';
+          },
+        },
         title: {
           display: true,
-          text: 'Bytes',
+          text: 'Code Size',
+          color: '#cbd5e1',
+          font: {
+            size: 12,
+            weight: 500,
+          },
         },
       },
       x: {
+        grid: {
+          color: 'rgba(71, 85, 105, 0.2)',
+          drawBorder: false,
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: {
+            size: 11,
+          },
+          maxTicksLimit: 8,
+        },
         title: {
           display: true,
           text: 'Time',
+          color: '#cbd5e1',
+          font: {
+            size: 12,
+            weight: 500,
+          },
         },
+      },
+    },
+    elements: {
+      point: {
+        radius: 4,
+        hoverRadius: 8,
+        borderWidth: 2,
+        hoverBorderWidth: 3,
+      },
+      line: {
+        tension: 0.2,
+        borderWidth: 3,
       },
     },
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <Line options={options} data={chartData} />
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 shadow-2xl">
+      <div className="mb-4">
+        <h3 className="text-lg font-medium text-white flex items-center">
+          <div className="w-2 h-2 bg-indigo-400 rounded-full mr-3"></div>
+          {data.teamName} - Code Progress
+        </h3>
+      </div>
+      <div className="bg-slate-900/30 rounded-lg p-4" style={{ height: '400px' }}>
+        <Line options={options} data={chartData} />
+      </div>
     </div>
   );
 }

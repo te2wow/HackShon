@@ -3,88 +3,161 @@ import { Team, TeamWithRepos, ChartData } from '@shared/types';
 import TeamSelector from './components/TeamSelector';
 import ProgressChart from './components/ProgressChart';
 import TeamManager from './components/TeamManager';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import TeamComparison from './components/TeamComparison';
+import { localStorageService } from './services/localStorageService';
 
 function App() {
   const [teams, setTeams] = useState<TeamWithRepos[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [chartData, setChartData] = useLocalStorage<ChartData[]>('hackshon-chart-data', []);
-  const [isManaging, setIsManaging] = useState(false);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
 
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch('/api/teams');
-      const data = await response.json();
-      
-      const teamsWithRepos = await Promise.all(
-        data.map(async (team: Team) => {
-          const repoResponse = await fetch(`/api/teams/${team.id}`);
-          return repoResponse.json();
-        })
-      );
-      
-      setTeams(teamsWithRepos);
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    }
+  const loadTeams = () => {
+    const allTeams = localStorageService.getTeams();
+    const teamsWithRepos = allTeams.map(team => 
+      localStorageService.getTeamWithRepos(team.id)
+    ).filter(Boolean) as TeamWithRepos[];
+    setTeams(teamsWithRepos);
   };
 
-  const fetchChartData = async (teamId: number) => {
-    try {
-      const response = await fetch(`/api/metrics/chart/${teamId}`);
-      const data = await response.json();
+  const generateChartData = (teamId: number): ChartData | null => {
+    const team = localStorageService.getTeam(teamId);
+    if (!team) return null;
+
+    const metrics = localStorageService.getMetricsByTeam(teamId);
+    
+    // Group metrics by timestamp
+    const timeMap = new Map<string, any>();
+    
+    metrics.forEach(metric => {
+      const timestamp = metric.timestamp;
       
-      setChartData(prev => {
-        const filtered = prev.filter(d => d.teamId !== teamId);
-        return [...filtered, data];
-      });
-    } catch (error) {
-      console.error('Error fetching chart data:', error);
+      if (!timeMap.has(timestamp)) {
+        timeMap.set(timestamp, {
+          timestamp,
+          languages: {},
+          total: { bytes: 0, lines: 0 }
+        });
+      }
+      
+      const entry = timeMap.get(timestamp);
+      
+      if (!entry.languages[metric.language]) {
+        entry.languages[metric.language] = { bytes: 0, lines: 0 };
+      }
+      
+      entry.languages[metric.language].bytes += metric.bytes;
+      entry.languages[metric.language].lines += metric.lines;
+      entry.total.bytes += metric.bytes;
+      entry.total.lines += metric.lines;
+    });
+    
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      data: Array.from(timeMap.values()).sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      )
+    };
+  };
+
+  const updateChartData = () => {
+    const allChartData = teams.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
+    setChartData(allChartData);
+  };
+
+  // Polling function to fetch from GitHub API every 30 minutes
+  const pollGitHubData = async () => {
+    const repositories = localStorageService.getRepositories();
+    
+    for (const repo of repositories) {
+      try {
+        const response = await fetch(`/api/github/languages/${repo.owner}/${repo.name}`);
+        if (response.ok) {
+          const languageData = await response.json();
+          localStorageService.addMetrics(repo.id, languageData);
+        }
+      } catch (error) {
+        console.error(`Error fetching data for ${repo.owner}/${repo.name}:`, error);
+      }
     }
+    
+    updateChartData();
   };
 
   useEffect(() => {
-    fetchTeams();
+    loadTeams();
+    updateChartData();
     
-    const eventSource = new EventSource('/api/stream');
+    // Initial data fetch
+    pollGitHubData();
     
-    eventSource.addEventListener('update', (event) => {
-      const updates = JSON.parse(event.data);
-      setChartData(updates);
-    });
+    // Set up 30-minute polling
+    const interval = setInterval(pollGitHubData, 30 * 60 * 1000);
     
-    return () => {
-      eventSource.close();
-    };
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (selectedTeamId) {
-      fetchChartData(selectedTeamId);
-    }
-  }, [selectedTeamId]);
+    updateChartData();
+  }, [teams]);
 
   const selectedChartData = chartData.find(d => d.teamId === selectedTeamId);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <header className="border-b border-slate-700/50 backdrop-blur-sm bg-slate-900/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <h1 className="text-3xl font-bold text-gray-900">HackShon</h1>
-            <button
-              onClick={() => setIsManaging(!isManaging)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              {isManaging ? 'View Progress' : 'Manage Teams'}
-            </button>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-slate-900 font-bold text-lg">H</span>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                HackShon
+              </h1>
+            </div>
+            <div className="flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+              <button
+                onClick={() => setCurrentView('individual')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  currentView === 'individual' 
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Individual
+              </button>
+              <button
+                onClick={() => setCurrentView('comparison')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  currentView === 'comparison' 
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Compare Teams
+              </button>
+              <button
+                onClick={() => setCurrentView('manage')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  currentView === 'manage' 
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Manage Teams
+              </button>
+            </div>
           </div>
         </div>
       </header>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isManaging ? (
-          <TeamManager teams={teams} onUpdate={fetchTeams} />
+        {currentView === 'manage' ? (
+          <TeamManager teams={teams} onUpdate={loadTeams} />
+        ) : currentView === 'comparison' ? (
+          <TeamComparison teams={teams} />
         ) : (
           <>
             <TeamSelector

@@ -26,7 +26,7 @@ app.post('/', async (c) => {
     return c.json({ error: 'Team name is required' }, 400);
   }
   
-  const team = dataStore.createTeam(name);
+  const team = await dataStore.createTeam(name);
   return c.json(team, 201);
 });
 
@@ -38,7 +38,7 @@ app.put('/:id', async (c) => {
     return c.json({ error: 'Team name is required' }, 400);
   }
   
-  const team = dataStore.updateTeam(id, name);
+  const team = await dataStore.updateTeam(id, name);
   
   if (!team) {
     return c.json({ error: 'Team not found' }, 404);
@@ -47,9 +47,9 @@ app.put('/:id', async (c) => {
   return c.json(team);
 });
 
-app.delete('/:id', (c) => {
+app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const success = dataStore.deleteTeam(id);
+  const success = await dataStore.deleteTeam(id);
   
   if (!success) {
     return c.json({ error: 'Team not found' }, 404);

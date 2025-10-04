@@ -94,8 +94,41 @@ function App() {
     console.log('Manual fetch started...');
     
     try {
-      await pollGitHubData();
-      console.log('Manual fetch completed');
+      const repositories = localStorageService.getRepositories();
+      console.log('Repositories to fetch:', repositories.length);
+      
+      for (const repo of repositories) {
+        try {
+          console.log(`Fetching data for ${repo.owner}/${repo.name}...`);
+          const response = await fetch(`/api/github/languages/${repo.owner}/${repo.name}`);
+          if (response.ok) {
+            const languageData = await response.json();
+            console.log(`Data received for ${repo.owner}/${repo.name}:`, languageData);
+            localStorageService.addMetrics(repo.id, languageData);
+          } else {
+            console.error(`Failed to fetch ${repo.owner}/${repo.name}:`, response.status);
+          }
+        } catch (error) {
+          console.error(`Error fetching data for ${repo.owner}/${repo.name}:`, error);
+        }
+      }
+      
+      // Force reload teams and update chart data
+      loadTeams();
+      
+      // Generate fresh chart data
+      const allTeams = localStorageService.getTeams();
+      const teamsWithRepos = allTeams.map(team => 
+        localStorageService.getTeamWithRepos(team.id)
+      ).filter(Boolean) as TeamWithRepos[];
+      
+      const freshChartData = teamsWithRepos.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
+      setChartData(freshChartData);
+      
+      // Notify other components about the update
+      window.dispatchEvent(new CustomEvent('manualFetchCompleted'));
+      
+      console.log('Manual fetch completed, charts updated');
     } catch (error) {
       console.error('Manual fetch failed:', error);
     } finally {

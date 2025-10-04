@@ -126,6 +126,27 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
     loadChartData();
   }, [teams]);
 
+  // Listen for manual fetch events
+  useEffect(() => {
+    const handleStorageChange = () => {
+      loadChartData();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for manual fetch
+    const handleManualFetch = () => {
+      setTimeout(() => loadChartData(), 100); // Small delay to ensure localStorage is updated
+    };
+    
+    window.addEventListener('manualFetchCompleted', handleManualFetch);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('manualFetchCompleted', handleManualFetch);
+    };
+  }, []);
+
   const toggleTeamSelection = (teamId: number) => {
     setSelectedTeams(prev => 
       prev.includes(teamId) 

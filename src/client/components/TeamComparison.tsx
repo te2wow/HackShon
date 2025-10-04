@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { TeamWithRepos, ChartData } from '@shared/types';
+import { localStorageService } from '../services/localStorageService';
 
 ChartJS.register(
   CategoryScale,
@@ -27,37 +28,102 @@ interface TeamComparisonProps {
   teams: TeamWithRepos[];
 }
 
+type TimeInterval = '1h' | '6h' | '24h' | '7d' | '30d' | 'all';
+
+const TIME_INTERVALS = [
+  { value: '1h' as TimeInterval, label: '1時間' },
+  { value: '6h' as TimeInterval, label: '6時間' },
+  { value: '24h' as TimeInterval, label: '24時間' },
+  { value: '7d' as TimeInterval, label: '7日' },
+  { value: '30d' as TimeInterval, label: '30日' },
+  { value: 'all' as TimeInterval, label: '全期間' },
+];
+
+function filterDataByTimeInterval(data: ChartData[], interval: TimeInterval): ChartData[] {
+  if (interval === 'all') return data;
+  
+  const now = new Date();
+  let cutoffTime: Date;
+  
+  switch (interval) {
+    case '1h':
+      cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
+      break;
+    case '6h':
+      cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+      break;
+    case '24h':
+      cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      cutoffTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      cutoffTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return data;
+  }
+  
+  return data.map(teamData => ({
+    ...teamData,
+    data: teamData.data.filter(d => new Date(d.timestamp) >= cutoffTime)
+  }));
+}
+
 export default function TeamComparison({ teams }: TeamComparisonProps) {
   const [chartDataList, setChartDataList] = useState<ChartData[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<number[]>([]);
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval>('24h');
 
-  const fetchAllChartData = async () => {
-    try {
-      const data = await Promise.all(
-        teams.map(async (team) => {
-          const response = await fetch(`/api/metrics/chart/${team.id}`);
-          return response.json();
-        })
-      );
-      setChartDataList(data.filter(Boolean));
-    } catch (error) {
-      console.error('Error fetching chart data:', error);
-    }
+  const generateChartData = (teamId: number): ChartData | null => {
+    const team = localStorageService.getTeam(teamId);
+    if (!team) return null;
+
+    const metrics = localStorageService.getMetricsByTeam(teamId);
+    
+    // Group metrics by timestamp
+    const timeMap = new Map<string, any>();
+    
+    metrics.forEach(metric => {
+      const timestamp = metric.timestamp;
+      
+      if (!timeMap.has(timestamp)) {
+        timeMap.set(timestamp, {
+          timestamp,
+          languages: {},
+          total: { bytes: 0, lines: 0 }
+        });
+      }
+      
+      const entry = timeMap.get(timestamp);
+      
+      if (!entry.languages[metric.language]) {
+        entry.languages[metric.language] = { bytes: 0, lines: 0 };
+      }
+      
+      entry.languages[metric.language].bytes += metric.bytes;
+      entry.languages[metric.language].lines += metric.lines;
+      entry.total.bytes += metric.bytes;
+      entry.total.lines += metric.lines;
+    });
+    
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      data: Array.from(timeMap.values()).sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      )
+    };
+  };
+
+  const loadChartData = () => {
+    const data = teams.map(team => generateChartData(team.id)).filter(Boolean) as ChartData[];
+    setChartDataList(data);
   };
 
   useEffect(() => {
-    fetchAllChartData();
-    
-    const eventSource = new EventSource('/api/stream');
-    
-    eventSource.addEventListener('update', (event) => {
-      const updates = JSON.parse(event.data);
-      setChartDataList(updates);
-    });
-    
-    return () => {
-      eventSource.close();
-    };
+    loadChartData();
   }, [teams]);
 
   const toggleTeamSelection = (teamId: number) => {
@@ -68,9 +134,11 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
     );
   };
 
-  const filteredData = chartDataList.filter(data => 
+  const teamFilteredData = chartDataList.filter(data => 
     selectedTeams.length === 0 || selectedTeams.includes(data.teamId)
   );
+  
+  const filteredData = filterDataByTimeInterval(teamFilteredData, selectedInterval);
 
   // Generate unique colors for each team
   const teamColors = [
@@ -91,10 +159,19 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
     )
   )).sort();
 
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    if (selectedInterval === '1h' || selectedInterval === '6h') {
+      return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    } else if (selectedInterval === '24h') {
+      return date.toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+    }
+  };
+
   const comparisonChartData = {
-    labels: allTimestamps.map(timestamp => 
-      new Date(timestamp).toLocaleTimeString()
-    ),
+    labels: allTimestamps.map(timestamp => formatTimestamp(timestamp)),
     datasets: filteredData.map((teamData, index) => {
       // Create data array with forward fill for missing values
       let lastValue = null;
@@ -251,11 +328,26 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
 
       {/* Comparison Chart */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-8 shadow-2xl">
-        <div className="mb-4">
+        <div className="mb-4 flex justify-between items-center">
           <h3 className="text-lg font-medium text-white flex items-center">
             <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
             Team Progress Comparison
           </h3>
+          <div className="flex gap-1 p-1 bg-slate-700/50 rounded-lg border border-slate-600/50">
+            {TIME_INTERVALS.map((interval) => (
+              <button
+                key={interval.value}
+                onClick={() => setSelectedInterval(interval.value)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+                  selectedInterval === interval.value
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50'
+                }`}
+              >
+                {interval.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="bg-slate-900/30 rounded-lg p-4" style={{ height: '400px' }}>
           <Line options={options} data={comparisonChartData} />

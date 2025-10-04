@@ -11,6 +11,7 @@ function App() {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
+  const [isManualFetching, setIsManualFetching] = useState(false);
 
   const loadTeams = () => {
     const allTeams = localStorageService.getTeams();
@@ -66,7 +67,7 @@ function App() {
     setChartData(allChartData);
   };
 
-  // Polling function to fetch from GitHub API every 30 minutes
+  // Polling function to fetch from GitHub API every 5 minutes
   const pollGitHubData = async () => {
     const repositories = localStorageService.getRepositories();
     
@@ -85,6 +86,23 @@ function App() {
     updateChartData();
   };
 
+  // Manual fetch for debugging
+  const manualFetch = async () => {
+    if (isManualFetching) return;
+    
+    setIsManualFetching(true);
+    console.log('Manual fetch started...');
+    
+    try {
+      await pollGitHubData();
+      console.log('Manual fetch completed');
+    } catch (error) {
+      console.error('Manual fetch failed:', error);
+    } finally {
+      setIsManualFetching(false);
+    }
+  };
+
   useEffect(() => {
     loadTeams();
     updateChartData();
@@ -92,8 +110,8 @@ function App() {
     // Initial data fetch
     pollGitHubData();
     
-    // Set up 30-minute polling
-    const interval = setInterval(pollGitHubData, 30 * 60 * 1000);
+    // Set up 5-minute polling
+    const interval = setInterval(pollGitHubData, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, []);
@@ -117,36 +135,58 @@ function App() {
                 HackShon
               </h1>
             </div>
-            <div className="flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+            <div className="flex items-center gap-4">
+              <div className="flex gap-1 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <button
+                  onClick={() => setCurrentView('individual')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentView === 'individual' 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Individual
+                </button>
+                <button
+                  onClick={() => setCurrentView('comparison')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentView === 'comparison' 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Compare Teams
+                </button>
+                <button
+                  onClick={() => setCurrentView('manage')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentView === 'manage' 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Manage Teams
+                </button>
+              </div>
+              
               <button
-                onClick={() => setCurrentView('individual')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  currentView === 'individual' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                onClick={manualFetch}
+                disabled={isManualFetching}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                  isManualFetching
+                    ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
+                    : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
                 }`}
+                title="デバッグ用：手動でGitHubデータを取得"
               >
-                Individual
-              </button>
-              <button
-                onClick={() => setCurrentView('comparison')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  currentView === 'comparison' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
-              >
-                Compare Teams
-              </button>
-              <button
-                onClick={() => setCurrentView('manage')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  currentView === 'manage' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
-              >
-                Manage Teams
+                {isManualFetching ? (
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    取得中...
+                  </div>
+                ) : (
+                  '手動取得'
+                )}
               </button>
             </div>
           </div>

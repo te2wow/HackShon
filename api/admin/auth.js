@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminPassword) {
-      console.error('ADMIN_PASSWORD environment variable is not set');
+      // Don't log sensitive info
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid password' });
     }
   } catch (error) {
-    console.error('Admin auth error:', error);
+    // Don't log potentially sensitive error details
     return res.status(500).json({ error: 'Authentication failed' });
   }
 }

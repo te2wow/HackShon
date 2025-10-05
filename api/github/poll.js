@@ -93,20 +93,33 @@ export default async function handler(req, res) {
           try {
             await client.query('BEGIN');
             
+            // Round timestamp to the nearest minute to avoid duplicates from rapid polling
             const timestamp = new Date();
+            timestamp.setSeconds(0, 0); // Reset seconds and milliseconds to 0
             
-            // Insert metrics for each language
-            for (const [language, bytes] of Object.entries(languageData)) {
-              const lines = Math.round(bytes / 50); // Rough estimate
+            // Check if we already have data for this timestamp and repository
+            const existingData = await client.query(
+              'SELECT COUNT(*) FROM metrics WHERE repository_id = $1 AND timestamp = $2',
+              [repo.id, timestamp]
+            );
+            
+            if (parseInt(existingData.rows[0].count) > 0) {
+              console.log(`Skipping ${repo.owner}/${repo.name} - data already exists for ${timestamp.toISOString()}`);
+              await client.query('ROLLBACK');
+            } else {
+              // Insert metrics for each language
+              for (const [language, bytes] of Object.entries(languageData)) {
+                const lines = Math.round(bytes / 50); // Rough estimate
+                
+                await client.query(
+                  'INSERT INTO metrics (repository_id, language, bytes, lines, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                  [repo.id, language, bytes, lines, timestamp]
+                );
+              }
               
-              await client.query(
-                'INSERT INTO metrics (repository_id, language, bytes, lines, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [repo.id, language, bytes, lines, timestamp]
-              );
+              await client.query('COMMIT');
+              console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
             }
-            
-            await client.query('COMMIT');
-            console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
           } catch (error) {
             await client.query('ROLLBACK');
             console.error(`Transaction error for ${repo.owner}/${repo.name}:`, error.message);

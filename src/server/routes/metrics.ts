@@ -40,7 +40,10 @@ app.get('/chart/:teamId', async (c) => {
     const repo = repos.find(r => r.id === repoId);
     if (!repo) return;
     
-    const timestamp = new Date(metric.timestamp).toISOString();
+    // Round timestamp to the nearest minute to group data from the same polling cycle
+    const date = new Date(metric.timestamp);
+    date.setSeconds(0, 0); // Reset seconds and milliseconds to 0
+    const timestamp = date.toISOString();
     
     if (!timeMap.has(timestamp)) {
       timeMap.set(timestamp, {

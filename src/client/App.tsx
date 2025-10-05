@@ -195,9 +195,11 @@ function App() {
               </div>
               
               <div className="flex items-center gap-4">
-                <span className="text-xs text-slate-400">
-                  ポーリング: {currentPollingInterval}分間隔
-                </span>
+                {isAdmin && (
+                  <span className="text-xs text-slate-400">
+                    ポーリング: {currentPollingInterval}分間隔
+                  </span>
+                )}
                 {isAdmin && (
                   <button
                     onClick={manualFetch}

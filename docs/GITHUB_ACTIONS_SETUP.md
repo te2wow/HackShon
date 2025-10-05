@@ -23,9 +23,10 @@ postgresql://user:password@db.xyz.supabase.co:5432/postgres
 mysql://user:password@region.connect.psdb.cloud/database?sslaccept=strict
 ```
 
-### 2. GITHUB_TOKEN
+### 2. PERSONAL_GITHUB_TOKEN
 
-GitHub APIアクセス用のトークンです。
+GitHub APIアクセス用のPersonal Access Tokenです。
+(注: `GITHUB_TOKEN`は予約済みのため使用できません)
 
 #### 設定方法:
 1. GitHub Settings → Developer settings → Personal access tokens
@@ -47,8 +48,8 @@ GitHub APIアクセス用のトークンです。
 - **Name**: `DATABASE_URL`
 - **Secret**: `postgresql://user:password@host:port/database`
 
-#### GITHUB_TOKEN (Personal Access Token)
-- **Name**: `GITHUB_TOKEN`
+#### PERSONAL_GITHUB_TOKEN (Personal Access Token)
+- **Name**: `PERSONAL_GITHUB_TOKEN`
 - **Secret**: `ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
 ## Vercel環境変数からの取得方法
@@ -83,6 +84,7 @@ GitHub APIアクセス用のトークンです。
 
 ### エラー: "GITHUB_TOKEN environment variable is not set"
 - Personal Access Tokenが正しく設定されているか確認
+- Secret名が `PERSONAL_GITHUB_TOKEN` になっているか確認
 - Token権限に `public_repo` または `repo` が含まれているか確認
 
 ### エラー: "getaddrinfo ENOTFOUND"

@@ -64,7 +64,7 @@ npm run dev
 
 ### 必要なSecrets:
 - `DATABASE_URL`: データベース接続URL
-- `GITHUB_TOKEN`: GitHub API アクセストークン
+- `PERSONAL_GITHUB_TOKEN`: GitHub API アクセストークン
 
 ## 📝 使用方法
 
@@ -103,7 +103,7 @@ npm run test:watch
 1. GitHub連携でリポジトリをインポート
 2. 環境変数を設定:
    - `DATABASE_URL`
-   - `GITHUB_TOKEN`
+   - `GITHUB_TOKEN` (Personal Access Token)
    - `ADMIN_PASSWORD`
 3. 自動デプロイ開始
 

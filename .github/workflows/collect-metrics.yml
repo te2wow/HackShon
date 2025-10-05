@@ -25,7 +25,7 @@ jobs:
         
       - name: Collect metrics from GitHub API
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NODE_ENV: production
         run: |

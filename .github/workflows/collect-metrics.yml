@@ -23,13 +23,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           
-      - name: Install dependencies
-        run: npm ci
+      - name: Install production dependencies only
+        run: npm ci --omit=dev
         
       - name: Collect metrics from GitHub API
+        timeout-minutes: 10
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

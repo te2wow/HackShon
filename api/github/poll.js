@@ -6,8 +6,14 @@ let db;
 
 function getDatabase() {
   if (!db) {
+    const connectionString = process.env.DATABASE_URL;
+    
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    
     db = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: connectionString,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
   }
@@ -30,20 +36,47 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const database = getDatabase();
-  const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN,
-  });
-
   try {
-    // Get all repositories
-    const repoResult = await database.query('SELECT * FROM repositories');
-    const repositories = repoResult.rows;
-    
-    console.log(`Polling ${repositories.length} repositories...`);
+    // Check environment variables first
+    if (!process.env.GITHUB_TOKEN) {
+      console.error('GITHUB_TOKEN not found in environment variables');
+      return res.status(500).json({ error: 'GITHUB_TOKEN environment variable is not set' });
+    }
 
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL not found in environment variables');
+      return res.status(500).json({ error: 'DATABASE_URL environment variable is not set' });
+    }
+
+    console.log('Environment variables check passed');
+
+    let database;
+    try {
+      database = getDatabase();
+      console.log('Database connection established');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError.message);
+      return res.status(500).json({ error: 'Database connection failed: ' + dbError.message });
+    }
+
+    const octokit = new Octokit({
+      auth: process.env.GITHUB_TOKEN,
+    });
+
+    // Get all repositories
+    let repositories;
+    try {
+      const repoResult = await database.query('SELECT * FROM repositories');
+      repositories = repoResult.rows;
+      console.log(`Found ${repositories.length} repositories to poll`);
+    } catch (queryError) {
+      console.error('Query failed:', queryError.message);
+      return res.status(500).json({ error: 'Database query failed: ' + queryError.message });
+    }
     for (const repo of repositories) {
       try {
+        console.log(`Polling repository: ${repo.owner}/${repo.name}`);
+        
         // Fetch language data from GitHub
         const response = await octokit.rest.repos.listLanguages({
           owner: repo.owner,
@@ -51,6 +84,7 @@ export default async function handler(req, res) {
         });
 
         const languageData = response.data;
+        console.log(`Languages found for ${repo.owner}/${repo.name}:`, Object.keys(languageData));
         
         if (Object.keys(languageData).length > 0) {
           // Start transaction
@@ -75,10 +109,13 @@ export default async function handler(req, res) {
             console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
           } catch (error) {
             await client.query('ROLLBACK');
+            console.error(`Transaction error for ${repo.owner}/${repo.name}:`, error.message);
             throw error;
           } finally {
             client.release();
           }
+        } else {
+          console.log(`No languages found for ${repo.owner}/${repo.name}`);
         }
       } catch (error) {
         console.error(`Error polling ${repo.owner}/${repo.name}:`, error.message);
@@ -90,7 +127,7 @@ export default async function handler(req, res) {
       message: `Polled ${repositories.length} repositories` 
     });
   } catch (error) {
-    console.error('Polling error:', error);
-    return res.status(500).json({ error: 'Polling failed' });
+    console.error('Polling error:', error.message, error.stack);
+    return res.status(500).json({ error: 'Polling failed: ' + error.message });
   }
 }

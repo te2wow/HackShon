@@ -56,6 +56,38 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
     setShowCreateForm(false);
   };
 
+  const initializeDatabase = async () => {
+    if (!confirm('データベーステーブルを初期化しますか？この操作は通常は一度だけ実行します。')) {
+      return;
+    }
+
+    const password = prompt('管理者パスワードを入力してください:');
+    if (!password) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/init-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`データベース初期化成功！\n作成されたテーブル: ${result.tables.join(', ')}`);
+      } else {
+        const error = await response.json();
+        alert(`エラー: ${error.error || 'データベース初期化に失敗しました'}`);
+      }
+    } catch (error) {
+      console.error('Database initialization error:', error);
+      alert('データベース初期化でエラーが発生しました');
+    }
+  };
+
   const createTeam = async () => {
     if (!newTeamName.trim()) return;
 
@@ -263,33 +295,53 @@ export default function TeamManager({ teams, onUpdate }: TeamManagerProps) {
         </div>
       )}
 
-      {/* Polling Configuration - Only visible in admin mode */}
+      {/* Database & Polling Configuration - Only visible in admin mode */}
       {isAdminMode && (
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-white">Polling Configuration</h2>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <label className="text-white font-medium">ポーリング間隔:</label>
-              <select
-                value={pollingInterval}
-                onChange={(e) => handlePollingIntervalChange(parseInt(e.target.value))}
-                className="px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              >
-                <option value={1}>1分</option>
-                <option value={2}>2分</option>
-                <option value={3}>3分</option>
-                <option value={5}>5分</option>
-                <option value={10}>10分</option>
-                <option value={15}>15分</option>
-                <option value={30}>30分</option>
-              </select>
-              <span className="text-slate-400 text-sm">
-                現在: {pollingInterval}分間隔でGitHubデータを取得
-              </span>
+          <h2 className="text-xl font-semibold mb-4 text-white">Database & Polling Configuration</h2>
+          <div className="space-y-6">
+            {/* Database Initialization */}
+            <div className="border-b border-slate-600/50 pb-4">
+              <h3 className="text-lg font-medium mb-2 text-white">Database Setup</h3>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={initializeDatabase}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg shadow-orange-500/25"
+                >
+                  Initialize Database
+                </button>
+                <span className="text-slate-400 text-sm">
+                  データベーステーブルを作成します（初回のみ必要）
+                </span>
+              </div>
             </div>
-            <p className="text-slate-400 text-sm">
-              短い間隔に設定するとGitHub APIの使用量が増加します。適切な間隔を選択してください。
-            </p>
+            
+            {/* Polling Configuration */}
+            <div>
+              <h3 className="text-lg font-medium mb-2 text-white">Polling Configuration</h3>
+              <div className="flex items-center gap-4">
+                <label className="text-white font-medium">ポーリング間隔:</label>
+                <select
+                  value={pollingInterval}
+                  onChange={(e) => handlePollingIntervalChange(parseInt(e.target.value))}
+                  className="px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                >
+                  <option value={1}>1分</option>
+                  <option value={2}>2分</option>
+                  <option value={3}>3分</option>
+                  <option value={5}>5分</option>
+                  <option value={10}>10分</option>
+                  <option value={15}>15分</option>
+                  <option value={30}>30分</option>
+                </select>
+                <span className="text-slate-400 text-sm">
+                  現在: {pollingInterval}分間隔でGitHubデータを取得
+                </span>
+              </div>
+              <p className="text-slate-400 text-sm mt-2">
+                短い間隔に設定するとGitHub APIの使用量が増加します。適切な間隔を選択してください。
+              </p>
+            </div>
           </div>
         </div>
       )}

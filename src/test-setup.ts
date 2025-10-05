@@ -31,5 +31,12 @@ jest.mock('chart.js', () => ({
 
 // Mock react-chartjs-2
 jest.mock('react-chartjs-2', () => ({
-  Line: ({ data, options }: any) => <div data-testid="chart" data-chart-data={JSON.stringify(data)} data-chart-options={JSON.stringify(options)} />,
+  Line: ({ data, options }: any) => {
+    const React = require('react');
+    return React.createElement('div', {
+      'data-testid': 'chart',
+      'data-chart-data': JSON.stringify(data),
+      'data-chart-options': JSON.stringify(options)
+    });
+  },
 }));

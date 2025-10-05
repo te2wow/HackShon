@@ -1,4 +1,4 @@
-import { verifyRepository, fetchRepositoryLanguages } from './githubService';
+import { verifyRepository, fetchRepositoryLanguages } from './githubService.js';
 import { Octokit } from 'octokit';
 
 jest.mock('octokit');

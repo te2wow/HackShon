@@ -4,6 +4,7 @@ import TeamSelector from './components/TeamSelector';
 import ProgressChart from './components/ProgressChart';
 import TeamManager from './components/TeamManager';
 import TeamComparison from './components/TeamComparison';
+import HistoricalProgress from './components/HistoricalProgress';
 import { adminService } from './services/adminService';
 import { pollingService } from './services/pollingService';
 
@@ -11,7 +12,7 @@ function App() {
   const [teams, setTeams] = useState<TeamWithRepos[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage'>('individual');
+  const [currentView, setCurrentView] = useState<'individual' | 'comparison' | 'manage' | 'historical'>('individual');
   const [isManualFetching, setIsManualFetching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pollingIntervalRef, setPollingIntervalRef] = useState<NodeJS.Timeout | null>(null);
@@ -211,6 +212,16 @@ function App() {
                 >
                   Manage Teams
                 </button>
+                <button
+                  onClick={() => setCurrentView('historical')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentView === 'historical' 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Historical
+                </button>
               </div>
               
               <div className="flex items-center gap-4">
@@ -272,6 +283,8 @@ function App() {
           <TeamManager teams={teams} onUpdate={loadTeams} />
         ) : currentView === 'comparison' ? (
           <TeamComparison teams={teams} />
+        ) : currentView === 'historical' ? (
+          <HistoricalProgress teams={teams} />
         ) : (
           <>
             <TeamSelector

@@ -6,6 +6,9 @@ app.post('/auth', async (c) => {
   try {
     const { password } = await c.req.json();
     const adminPassword = process.env.ADMIN_PASSWORD;
+    
+    console.log('Admin auth attempt - Password received:', password ? 'Yes' : 'No');
+    console.log('Admin auth attempt - ADMIN_PASSWORD env var exists:', adminPassword ? 'Yes' : 'No');
 
     if (!adminPassword) {
       console.error('ADMIN_PASSWORD environment variable is not set');
@@ -17,8 +20,12 @@ app.post('/auth', async (c) => {
     }
 
     if (password === adminPassword) {
+      console.log('Admin auth successful');
       return c.json({ success: true });
     } else {
+      console.log('Admin auth failed - password mismatch');
+      console.log('Expected length:', adminPassword.length);
+      console.log('Received length:', password.length);
       return c.json({ error: 'Invalid password' }, 401);
     }
   } catch (error) {

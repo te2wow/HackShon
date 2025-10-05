@@ -153,7 +153,9 @@ export default function ProgressChart({ data }: ProgressChartProps) {
         beginAtZero: true,
         grid: {
           color: 'rgba(71, 85, 105, 0.3)',
-          drawBorder: false,
+        },
+        border: {
+          display: false,
         },
         ticks: {
           color: '#94a3b8',
@@ -177,7 +179,9 @@ export default function ProgressChart({ data }: ProgressChartProps) {
       x: {
         grid: {
           color: 'rgba(71, 85, 105, 0.2)',
-          drawBorder: false,
+        },
+        border: {
+          display: false,
         },
         ticks: {
           color: '#94a3b8',

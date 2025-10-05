@@ -12,6 +12,7 @@ import metricsRoutes from './routes/metrics.js';
 import streamRoutes from './routes/stream.js';
 import githubRoutes from './routes/github.js';
 import adminRoutes from './routes/admin.js';
+import progressRoutes from './routes/progress.js';
 import { startPolling } from './services/githubPoller.js';
 import { initializeDatabase } from './db/database.js';
 
@@ -26,6 +27,7 @@ app.route('/api/metrics', metricsRoutes);
 app.route('/api/stream', streamRoutes);
 app.route('/api/github', githubRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/progress', progressRoutes);
 
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -36,6 +38,10 @@ app.use('/*', serveStatic({ root: './dist/client' }));
 const port = parseInt(process.env.PORT || '3000');
 
 console.log(`Starting HackShon server on port ${port}...`);
+console.log('Environment variables loaded:');
+console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+console.log('- GITHUB_TOKEN:', process.env.GITHUB_TOKEN ? 'Set' : 'Not set');
+console.log('- ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? 'Set' : 'Not set');
 
 // Initialize database
 await initializeDatabase();

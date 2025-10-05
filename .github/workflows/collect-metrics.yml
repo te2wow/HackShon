@@ -15,6 +15,7 @@ on:
 jobs:
   collect-metrics:
     runs-on: ubuntu-latest
+    environment: DATABASE_URL  # Use the environment where secrets are defined
     
     steps:
       - name: Checkout code

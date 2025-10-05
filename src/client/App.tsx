@@ -103,18 +103,36 @@ function App() {
     }
   };
 
+  // Manual chart update (admin only)
+  const [isManualChartUpdate, setIsManualChartUpdate] = useState(false);
+  const manualChartUpdate = async () => {
+    if (isManualChartUpdate) return;
+    
+    setIsManualChartUpdate(true);
+    console.log('Manual chart update started...');
+    
+    try {
+      await fetchChartUpdates();
+      console.log('Manual chart update completed');
+    } catch (error) {
+      console.error('Manual chart update failed:', error);
+    } finally {
+      setIsManualChartUpdate(false);
+    }
+  };
+
   const setupChartPolling = (shouldFetchImmediately = false) => {
     // Clear existing interval
     if (pollingIntervalRef) {
       clearInterval(pollingIntervalRef);
     }
     
-    // Set up chart data polling (much more frequent, lightweight)
-    const intervalMs = 30000; // 30 seconds for chart updates
+    // Set up chart data polling to match GitHub Actions interval (10 minutes)
+    const intervalMs = 10 * 60 * 1000; // 10 minutes for chart updates
     const newInterval = setInterval(fetchChartUpdates, intervalMs);
     setPollingIntervalRef(newInterval);
     
-    console.log('Chart polling set up with 30 second interval');
+    console.log('Chart polling set up with 10 minute interval');
     
     // Load initial data
     if (shouldFetchImmediately) {
@@ -198,29 +216,50 @@ function App() {
               <div className="flex items-center gap-4">
                 {isAdmin && (
                   <span className="text-xs text-slate-400">
-                    GitHub Actions: 5分間隔でデータ収集
+                    GitHub Actions: 10分間隔でデータ収集
                   </span>
                 )}
                 {isAdmin && (
-                  <button
-                    onClick={manualFetch}
-                    disabled={isManualFetching}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-                      isManualFetching
-                        ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
-                        : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
-                    }`}
-                    title="デバッグ用：手動でGitHubデータを取得"
-                  >
-                    {isManualFetching ? (
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                        取得中...
-                      </div>
-                    ) : (
-                      '手動取得'
-                    )}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={manualFetch}
+                      disabled={isManualFetching}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                        isManualFetching
+                          ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
+                          : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-green-600/20 hover:border-green-500/50 hover:text-green-400'
+                      }`}
+                      title="デバッグ用：手動でGitHubデータを取得"
+                    >
+                      {isManualFetching ? (
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-1"></div>
+                          データ取得中
+                        </div>
+                      ) : (
+                        'GitHub取得'
+                      )}
+                    </button>
+                    <button
+                      onClick={manualChartUpdate}
+                      disabled={isManualChartUpdate}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                        isManualChartUpdate
+                          ? 'bg-slate-600/50 text-slate-400 border-slate-600/50 cursor-not-allowed'
+                          : 'bg-slate-700/50 text-slate-300 border-slate-600/50 hover:bg-blue-600/20 hover:border-blue-500/50 hover:text-blue-400'
+                      }`}
+                      title="グラフデータを手動で更新"
+                    >
+                      {isManualChartUpdate ? (
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin mr-1"></div>
+                          更新中
+                        </div>
+                      ) : (
+                        'グラフ更新'
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

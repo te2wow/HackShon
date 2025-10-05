@@ -266,10 +266,10 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
     },
     elements: {
       point: {
-        radius: 4,
-        hoverRadius: 8,
-        borderWidth: 2,
-        hoverBorderWidth: 3,
+        radius: 0,
+        hoverRadius: 6,
+        borderWidth: 0,
+        hoverBorderWidth: 2,
       },
       line: {
         tension: 0.2,

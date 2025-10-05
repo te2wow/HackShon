@@ -179,11 +179,15 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
         return lastValue;
       });
 
+      const color = teamColors[index % teamColors.length];
+      
       return {
         label: teamData.teamName,
         data: dataArray,
-        borderColor: teamColors[index % teamColors.length],
-        backgroundColor: teamColors[index % teamColors.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        borderColor: color,
+        backgroundColor: color, // Use same color for legend consistency
+        pointBackgroundColor: color,
+        pointBorderColor: color,
         tension: 0.1, // Add some curve to the line
         fill: false,
       };
@@ -204,7 +208,8 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
           },
           padding: 20,
           usePointStyle: true,
-          pointStyle: 'circle',
+          pointStyle: 'line',
+          pointStyleWidth: 20,
         },
       },
       tooltip: {

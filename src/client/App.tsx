@@ -127,12 +127,12 @@ function App() {
       clearInterval(pollingIntervalRef);
     }
     
-    // Set up chart data polling to match GitHub Actions interval (10 minutes)
-    const intervalMs = 10 * 60 * 1000; // 10 minutes for chart updates
+    // Set up chart data polling to match GitHub Actions interval (5 minutes)
+    const intervalMs = 5 * 60 * 1000; // 5 minutes for chart updates
     const newInterval = setInterval(fetchChartUpdates, intervalMs);
     setPollingIntervalRef(newInterval);
     
-    console.log('Chart polling set up with 10 minute interval');
+    console.log('Chart polling set up with 5 minute interval');
     
     // Load initial data
     if (shouldFetchImmediately) {
@@ -216,7 +216,7 @@ function App() {
               <div className="flex items-center gap-4">
                 {isAdmin && (
                   <span className="text-xs text-slate-400">
-                    GitHub Actions: 10分間隔でデータ収集
+                    GitHub Actions: 5分間隔でデータ収集
                   </span>
                 )}
                 {isAdmin && (

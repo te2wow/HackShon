@@ -2,9 +2,9 @@ name: Collect Repository Metrics
 
 on:
   schedule:
-    # Run every 10 minutes (GitHub Actions minimum reliable interval)
+    # Run every 5 minutes
     # Note: GitHub may delay scheduled workflows during high load
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allow manual triggering
   push:
     branches: [ main ]

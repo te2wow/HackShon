@@ -126,16 +126,24 @@ export default function TeamComparison({ teams }: TeamComparisonProps) {
   
   const filteredData = filterDataByTimeInterval(teamFilteredData, selectedInterval);
 
-  // Generate unique colors for each team
+  // Generate unique colors for each team with better contrast
   const teamColors = [
-    'rgb(255, 99, 132)',
-    'rgb(54, 162, 235)',
-    'rgb(255, 205, 86)',
-    'rgb(75, 192, 192)',
-    'rgb(153, 102, 255)',
-    'rgb(255, 159, 64)',
-    'rgb(199, 199, 199)',
-    'rgb(83, 102, 255)',
+    'rgb(255, 99, 132)',   // Red/Pink
+    'rgb(54, 162, 235)',   // Blue
+    'rgb(255, 205, 86)',   // Yellow
+    'rgb(75, 192, 192)',   // Teal
+    'rgb(153, 102, 255)',  // Purple
+    'rgb(255, 159, 64)',   // Orange
+    'rgb(46, 204, 113)',   // Green
+    'rgb(231, 76, 60)',    // Dark Red
+    'rgb(52, 152, 219)',   // Light Blue
+    'rgb(155, 89, 182)',   // Light Purple
+    'rgb(241, 196, 15)',   // Dark Yellow
+    'rgb(26, 188, 156)',   // Dark Teal
+    'rgb(230, 126, 34)',   // Dark Orange
+    'rgb(142, 68, 173)',   // Dark Purple
+    'rgb(39, 174, 96)',    // Dark Green
+    'rgb(192, 57, 43)',    // Darker Red
   ];
 
   // Prepare chart data for comparison

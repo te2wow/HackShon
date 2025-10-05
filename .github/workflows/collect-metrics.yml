@@ -27,6 +27,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
         run: |
           # Run the metrics collection script
           node scripts/collect-metrics.js

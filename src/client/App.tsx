@@ -99,7 +99,7 @@ function App() {
     }
   };
 
-  const setupPolling = () => {
+  const setupPolling = (shouldFetchImmediately = false) => {
     // Clear existing interval
     if (pollingIntervalRef) {
       clearInterval(pollingIntervalRef);
@@ -112,8 +112,10 @@ function App() {
     
     console.log(`Polling set up with ${pollingService.getPollingInterval()} minute interval`);
     
-    // Do initial fetch immediately
-    pollGitHubData();
+    // Only fetch immediately if explicitly requested (initial setup)
+    if (shouldFetchImmediately) {
+      pollGitHubData();
+    }
     
     return newInterval;
   };
@@ -126,13 +128,13 @@ function App() {
     
     initializeApp();
     
-    // Set up initial polling
-    const interval = setupPolling();
+    // Set up initial polling with immediate fetch
+    const interval = setupPolling(true);
     
     // Listen for polling interval changes
     const handlePollingIntervalChange = (event: any) => {
       setCurrentPollingInterval(event.detail);
-      setupPolling();
+      setupPolling(false); // Don't fetch immediately when just changing interval
     };
     
     window.addEventListener('pollingIntervalChanged', handlePollingIntervalChange);

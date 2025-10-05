@@ -4,7 +4,7 @@ on:
   schedule:
     # Run every 5 minutes
     # Note: GitHub may delay scheduled workflows during high load
-    - cron: '*/5 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch: # Allow manual triggering
   push:
     branches: [ main ]

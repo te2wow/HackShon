@@ -112,6 +112,9 @@ function App() {
     
     console.log(`Polling set up with ${pollingService.getPollingInterval()} minute interval`);
     
+    // Do initial fetch immediately
+    pollGitHubData();
+    
     return newInterval;
   };
 
@@ -140,9 +143,8 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    updateChartData();
-  }, [teams]);
+  // Remove automatic chart update on teams change
+  // Chart data will be updated through polling only
 
   const selectedChartData = chartData.find(d => d.teamId === selectedTeamId);
 

@@ -69,29 +69,33 @@ function App() {
     setChartData(allChartData);
   };
 
-  // Polling function to fetch from GitHub API every 5 minutes
-  const pollGitHubData = async () => {
+  // Fetch chart data updates (no GitHub API polling)
+  const fetchChartUpdates = async () => {
     try {
-      const response = await fetch('/api/github/poll', { method: 'POST' });
-      if (response.ok) {
-        await loadTeams();
-        await updateChartData();
-      }
+      // Only update chart data, no GitHub API calls
+      await updateChartData();
     } catch (error) {
-      console.error('Error polling GitHub data:', error);
+      console.error('Error fetching chart updates:', error);
     }
   };
 
-  // Manual fetch for debugging
+  // Manual GitHub data collection (admin only)
   const manualFetch = async () => {
     if (isManualFetching) return;
     
     setIsManualFetching(true);
-    console.log('Manual fetch started...');
+    console.log('Manual GitHub data collection started...');
     
     try {
-      await pollGitHubData();
-      console.log('Manual fetch completed');
+      // Call GitHub polling endpoint
+      const response = await fetch('/api/github/poll', { method: 'POST' });
+      if (response.ok) {
+        await loadTeams();
+        await updateChartData();
+        console.log('Manual fetch completed');
+      } else {
+        throw new Error('Manual fetch failed');
+      }
     } catch (error) {
       console.error('Manual fetch failed:', error);
     } finally {
@@ -99,22 +103,22 @@ function App() {
     }
   };
 
-  const setupPolling = (shouldFetchImmediately = false) => {
+  const setupChartPolling = (shouldFetchImmediately = false) => {
     // Clear existing interval
     if (pollingIntervalRef) {
       clearInterval(pollingIntervalRef);
     }
     
-    // Set up new polling with current interval
-    const intervalMs = pollingService.getPollingIntervalMs();
-    const newInterval = setInterval(pollGitHubData, intervalMs);
+    // Set up chart data polling (much more frequent, lightweight)
+    const intervalMs = 30000; // 30 seconds for chart updates
+    const newInterval = setInterval(fetchChartUpdates, intervalMs);
     setPollingIntervalRef(newInterval);
     
-    console.log(`Polling set up with ${pollingService.getPollingInterval()} minute interval`);
+    console.log('Chart polling set up with 30 second interval');
     
-    // Only fetch immediately if explicitly requested (initial setup)
+    // Load initial data
     if (shouldFetchImmediately) {
-      pollGitHubData();
+      fetchChartUpdates();
     }
     
     return newInterval;
@@ -128,20 +132,14 @@ function App() {
     
     initializeApp();
     
-    // Set up initial polling with immediate fetch
-    const interval = setupPolling(true);
+    // Set up chart polling with immediate fetch
+    const interval = setupChartPolling(true);
     
-    // Listen for polling interval changes
-    const handlePollingIntervalChange = (event: any) => {
-      setCurrentPollingInterval(event.detail);
-      setupPolling(false); // Don't fetch immediately when just changing interval
-    };
-    
-    window.addEventListener('pollingIntervalChanged', handlePollingIntervalChange);
+    // Remove polling interval change listener (no longer needed)
+    // Chart polling is fixed at 30 seconds
     
     return () => {
       clearInterval(interval);
-      window.removeEventListener('pollingIntervalChanged', handlePollingIntervalChange);
     };
   }, []);
 
@@ -200,7 +198,7 @@ function App() {
               <div className="flex items-center gap-4">
                 {isAdmin && (
                   <span className="text-xs text-slate-400">
-                    ポーリング: {currentPollingInterval}分間隔
+                    GitHub Actions: 5分間隔でデータ収集
                   </span>
                 )}
                 {isAdmin && (

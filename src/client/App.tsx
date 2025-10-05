@@ -118,8 +118,7 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       await loadTeams();
-      // Initial data fetch
-      await pollGitHubData();
+      // Don't do initial data fetch - let polling handle it
     };
     
     initializeApp();

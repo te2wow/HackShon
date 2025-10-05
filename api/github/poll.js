@@ -106,20 +106,21 @@ export default async function handler(req, res) {
             if (parseInt(existingData.rows[0].count) > 0) {
               console.log(`Skipping ${repo.owner}/${repo.name} - data already exists for ${timestamp.toISOString()}`);
               await client.query('ROLLBACK');
-            } else {
-              // Insert metrics for each language
-              for (const [language, bytes] of Object.entries(languageData)) {
-                const lines = Math.round(bytes / 50); // Rough estimate
-                
-                await client.query(
-                  'INSERT INTO metrics (repository_id, language, bytes, lines, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                  [repo.id, language, bytes, lines, timestamp]
-                );
-              }
-              
-              await client.query('COMMIT');
-              console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
+              continue; // Skip to next repository
             }
+            
+            // Insert metrics for each language
+            for (const [language, bytes] of Object.entries(languageData)) {
+              const lines = Math.round(bytes / 50); // Rough estimate
+              
+              await client.query(
+                'INSERT INTO metrics (repository_id, language, bytes, lines, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [repo.id, language, bytes, lines, timestamp]
+              );
+            }
+            
+            await client.query('COMMIT');
+            console.log(`Updated metrics for ${repo.owner}/${repo.name}`);
           } catch (error) {
             await client.query('ROLLBACK');
             console.error(`Transaction error for ${repo.owner}/${repo.name}:`, error.message);

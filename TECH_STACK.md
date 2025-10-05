@@ -78,6 +78,38 @@ npm run build        # 本番ビルド
 npm start           # 本番サーバー起動
 ```
 
+## アーキテクチャ図
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Browser                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  React Frontend (Vite)                                          │
+│  ├── Components (TeamManager, ProgressChart, etc.)              │
+│  ├── Services (adminService, pollingService)                    │
+│  └── Hooks (useLocalStorage)                                    │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │ HTTP/WebSocket
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Hono Server                                                    │
+│  ├── Routes (/api/admin, /api/github, /api/metrics)            │
+│  ├── Services (githubService, githubPoller)                    │
+│  ├── Store (dataStore, persistentStore)                        │
+│  └── EventEmitter (Real-time updates)                          │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Data Layer                                                     │
+│  ├── SQLite (Primary) / PostgreSQL (Alternative)               │
+│  └── JSON Store (Persistent data)                              │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  External Services                                              │
+│  └── GitHub API (Octokit)                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## 特徴
 
 ### モダンスタック

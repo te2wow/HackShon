@@ -12,7 +12,6 @@ import metricsRoutes from './routes/metrics.js';
 import streamRoutes from './routes/stream.js';
 import githubRoutes from './routes/github.js';
 import adminRoutes from './routes/admin.js';
-import progressRoutes from './routes/progress.js';
 import { startPolling } from './services/githubPoller.js';
 import { initializeDatabase } from './db/database.js';
 
@@ -27,7 +26,6 @@ app.route('/api/metrics', metricsRoutes);
 app.route('/api/stream', streamRoutes);
 app.route('/api/github', githubRoutes);
 app.route('/api/admin', adminRoutes);
-app.route('/api/progress', progressRoutes);
 
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });

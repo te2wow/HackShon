@@ -1,52 +1,52 @@
-name: Collect Repository Metrics
+# name: Collect Repository Metrics
 
-on:
-  schedule:
-    # Run every 5 minutes
-    # Note: GitHub may delay scheduled workflows during high load
-    - cron: '*/15 * * * *'
-  workflow_dispatch: # Allow manual triggering
-  push:
-    branches: [ main ]
-    paths: 
-      - '.github/workflows/collect-metrics.yml'
-      - 'scripts/collect-metrics.js'
+# on:
+#   schedule:
+#     # Run every 5 minutes
+#     # Note: GitHub may delay scheduled workflows during high load
+#     - cron: '*/15 * * * *'
+#   workflow_dispatch: # Allow manual triggering
+#   push:
+#     branches: [ main ]
+#     paths: 
+#       - '.github/workflows/collect-metrics.yml'
+#       - 'scripts/collect-metrics.js'
 
-jobs:
-  collect-metrics:
-    runs-on: ubuntu-latest
-    environment: DATABASE_URL  # Use the environment where secrets are defined
+# jobs:
+#   collect-metrics:
+#     runs-on: ubuntu-latest
+#     environment: DATABASE_URL  # Use the environment where secrets are defined
     
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
           
-      - name: Install production dependencies only
-        run: npm ci --omit=dev
+#       - name: Install production dependencies only
+#         run: npm ci --omit=dev
         
-      - name: Collect metrics from GitHub API
-        timeout-minutes: 10
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_ENV: production
-        run: |
-          # Run the metrics collection script
-          node scripts/collect-metrics.js
+#       - name: Collect metrics from GitHub API
+#         timeout-minutes: 10
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+#           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+#           NODE_ENV: production
+#         run: |
+#           # Run the metrics collection script
+#           node scripts/collect-metrics.js
           
-      - name: Notify completion
-        if: success()
-        run: |
-          echo "Metrics collection completed successfully"
+#       - name: Notify completion
+#         if: success()
+#         run: |
+#           echo "Metrics collection completed successfully"
           
-      - name: Handle failure
-        if: failure()
-        run: |
-          echo "Metrics collection failed"
-          # Could add notification logic here
+#       - name: Handle failure
+#         if: failure()
+#         run: |
+#           echo "Metrics collection failed"
+#           # Could add notification logic here
